@@ -47,6 +47,7 @@ export default function FamilyTree() {
   const queryClient = useQueryClient();
   const [selectedMember, setSelectedMember] = useState<FamilyMember | null>(null);
   const [isAddingRelation, setIsAddingRelation] = useState(false);
+  const [selectedRelativeMemberId, setSelectedRelativeMemberId] = useState<string>("");
   const [relationType, setRelationType] = useState<string>("");
 
   const { data: relations = [], isLoading } = useQuery<FamilyRelation[]>({
@@ -77,6 +78,7 @@ export default function FamilyTree() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/family"] });
       setIsAddingRelation(false);
+      setSelectedRelativeMemberId("");
       setRelationType("");
       toast({
         title: "Success",
@@ -91,6 +93,41 @@ export default function FamilyTree() {
       });
     },
   });
+
+  const handleAddRelation = () => {
+    if (!selectedRelativeMemberId) {
+      toast({
+        title: "Error",
+        description: "Please select a family member",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!relationType) {
+      toast({
+        title: "Error",
+        description: "Please select a relation type",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const memberId = parseInt(selectedRelativeMemberId);
+    if (isNaN(memberId)) {
+      toast({
+        title: "Error",
+        description: "Invalid family member selected",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    addRelationMutation.mutate({
+      toUserId: memberId,
+      relationType,
+    });
+  };
 
   if (!user) {
     return null;
@@ -263,6 +300,7 @@ export default function FamilyTree() {
         </CardContent>
       </Card>
 
+      {/* Member Details Dialog */}
       <Dialog
         open={selectedMember !== null}
         onOpenChange={(open) => !open && setSelectedMember(null)}
@@ -295,9 +333,16 @@ export default function FamilyTree() {
         </DialogContent>
       </Dialog>
 
+      {/* Add Relation Dialog */}
       <Dialog 
         open={isAddingRelation} 
-        onOpenChange={setIsAddingRelation}
+        onOpenChange={(open) => {
+          setIsAddingRelation(open);
+          if (!open) {
+            setSelectedRelativeMemberId("");
+            setRelationType("");
+          }
+        }}
       >
         <DialogContent>
           <DialogHeader>
@@ -310,10 +355,8 @@ export default function FamilyTree() {
             <div className="space-y-2">
               <label className="text-sm font-medium">Select Member</label>
               <Select
-                onValueChange={(value) => {
-                  const member = allUsers.find(u => u.id === parseInt(value));
-                  member && setSelectedMember(member);
-                }}
+                value={selectedRelativeMemberId}
+                onValueChange={setSelectedRelativeMemberId}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select a family member" />
@@ -350,15 +393,8 @@ export default function FamilyTree() {
 
             <Button
               className="w-full"
-              disabled={!selectedMember || !relationType}
-              onClick={() => {
-                if (selectedMember) {
-                  addRelationMutation.mutate({
-                    toUserId: selectedMember.id,
-                    relationType,
-                  });
-                }
-              }}
+              disabled={!selectedRelativeMemberId || !relationType}
+              onClick={handleAddRelation}
             >
               Add Relation
             </Button>
