@@ -27,6 +27,7 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 export function registerRoutes(app: Express): Server {
+  // Setup auth routes first
   setupAuth(app);
 
   // Serve uploaded files
