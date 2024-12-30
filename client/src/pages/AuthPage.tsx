@@ -8,7 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 
 export default function AuthPage() {
-  const [isLogin, setIsLogin] = useState(true);
+  const [isLogin, setIsLogin] = useState(false); // Start with registration view
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -23,22 +23,14 @@ export default function AuthPage() {
       if (isLogin) {
         await login({ 
           username, 
-          password, 
+          password,
           displayName: username // This field is required by the schema but not used for login
-        });
-        toast({
-          title: "Success",
-          description: "Logged in successfully",
         });
       } else {
         await register({ 
           username, 
-          password, 
+          password,
           displayName: displayName || username 
-        });
-        toast({
-          title: "Success",
-          description: "Account created successfully",
         });
       }
     } catch (error: any) {
@@ -57,7 +49,7 @@ export default function AuthPage() {
       <Card className="w-[400px]">
         <CardHeader>
           <CardTitle className="text-2xl text-center">
-            {isLogin ? "Welcome Back" : "Join Your Family"}
+            {isLogin ? "Welcome Back" : "Create Your Account"}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -71,6 +63,7 @@ export default function AuthPage() {
                 required
                 className="bg-white"
                 disabled={isSubmitting}
+                placeholder="Enter your username"
               />
             </div>
             {!isLogin && (
@@ -96,6 +89,7 @@ export default function AuthPage() {
                 required
                 className="bg-white"
                 disabled={isSubmitting}
+                placeholder="Enter your password"
               />
             </div>
             <Button type="submit" className="w-full" disabled={isSubmitting}>
