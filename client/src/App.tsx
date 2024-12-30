@@ -1,8 +1,8 @@
 import { Switch, Route } from "wouter";
 import { Loader2 } from "lucide-react";
+import { useUser } from "./hooks/use-user";
 import AuthPage from "./pages/AuthPage";
 import HomePage from "./pages/HomePage";
-import { useUser } from "./hooks/use-user";
 
 function App() {
   const { user, isLoading } = useUser();
