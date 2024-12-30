@@ -48,7 +48,32 @@ export const mediaItemsRelations = relations(mediaItems, ({ one, many }) => ({
     fields: [mediaItems.userId],
     references: [users.id],
   }),
-  tags: many(mediaTags),
+  tags: many(mediaTags, {
+    fields: [mediaItems.id],
+    references: [mediaTags.mediaId],
+  }),
+}));
+
+export const mediaTagsRelations = relations(mediaTags, ({ one }) => ({
+  mediaItem: one(mediaItems, {
+    fields: [mediaTags.mediaId],
+    references: [mediaItems.id],
+  }),
+  user: one(users, {
+    fields: [mediaTags.userId],
+    references: [users.id],
+  }),
+}));
+
+export const familyRelationsRelations = relations(familyRelations, ({ one }) => ({
+  fromUser: one(users, {
+    fields: [familyRelations.fromUserId],
+    references: [users.id],
+  }),
+  toUser: one(users, {
+    fields: [familyRelations.toUserId],
+    references: [users.id],
+  }),
 }));
 
 // Schemas
