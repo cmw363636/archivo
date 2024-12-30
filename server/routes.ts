@@ -55,23 +55,37 @@ export function registerRoutes(app: Express): Server {
       return res.status(401).send("Not authenticated");
     }
 
-    const userAlbums = await db.query.albums.findMany({
-      where: or(
-        eq(albums.createdBy, req.user.id),
-        eq(albumMembers.userId, req.user.id)
-      ),
-      with: {
-        creator: true,
-        members: {
-          with: {
-            user: true,
-          },
-        },
-        mediaItems: true,
-      },
-    });
+    try {
+      const userAlbums = await db
+        .select()
+        .from(albums)
+        .where(eq(albums.createdBy, req.user.id));
 
-    res.json(userAlbums);
+      const sharedAlbums = await db
+        .select({
+          album: albums,
+          member: albumMembers,
+        })
+        .from(albums)
+        .innerJoin(
+          albumMembers,
+          and(
+            eq(albumMembers.albumId, albums.id),
+            eq(albumMembers.userId, req.user.id)
+          )
+        );
+
+      // Combine user's albums and shared albums
+      const combinedAlbums = [
+        ...userAlbums,
+        ...sharedAlbums.map(({ album }) => album),
+      ];
+
+      res.json(combinedAlbums);
+    } catch (error) {
+      console.error('Error fetching albums:', error);
+      res.status(500).send("Error fetching albums");
+    }
   });
 
   app.post("/api/albums", async (req, res) => {
