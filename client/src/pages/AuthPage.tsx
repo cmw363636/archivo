@@ -5,9 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { Loader2 } from "lucide-react";
 
 export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -16,11 +18,28 @@ export default function AuthPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
     try {
       if (isLogin) {
-        await login({ username, password, displayName: username });
+        await login({ 
+          username, 
+          password, 
+          displayName: username // This field is required by the schema but not used for login
+        });
+        toast({
+          title: "Success",
+          description: "Logged in successfully",
+        });
       } else {
-        await register({ username, password, displayName: displayName || username });
+        await register({ 
+          username, 
+          password, 
+          displayName: displayName || username 
+        });
+        toast({
+          title: "Success",
+          description: "Account created successfully",
+        });
       }
     } catch (error: any) {
       toast({
@@ -28,6 +47,8 @@ export default function AuthPage() {
         description: error.message,
         variant: "destructive",
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -49,6 +70,7 @@ export default function AuthPage() {
                 onChange={(e) => setUsername(e.target.value)}
                 required
                 className="bg-white"
+                disabled={isSubmitting}
               />
             </div>
             {!isLogin && (
@@ -60,6 +82,7 @@ export default function AuthPage() {
                   onChange={(e) => setDisplayName(e.target.value)}
                   placeholder="How should we call you?"
                   className="bg-white"
+                  disabled={isSubmitting}
                 />
               </div>
             )}
@@ -72,16 +95,25 @@ export default function AuthPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 className="bg-white"
+                disabled={isSubmitting}
               />
             </div>
-            <Button type="submit" className="w-full">
-              {isLogin ? "Login" : "Create Account"}
+            <Button type="submit" className="w-full" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {isLogin ? "Logging in..." : "Creating Account..."}
+                </>
+              ) : (
+                isLogin ? "Login" : "Create Account"
+              )}
             </Button>
             <Button
               type="button"
               variant="ghost"
               className="w-full"
               onClick={() => setIsLogin(!isLogin)}
+              disabled={isSubmitting}
             >
               {isLogin ? "Need an account?" : "Already have an account?"}
             </Button>
