@@ -7,7 +7,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/queryClient";
 import { Toaster } from "@/components/ui/toaster";
 
-function App() {
+function AppContent() {
   const { user, isLoading } = useUser();
 
   if (isLoading) {
@@ -23,10 +23,16 @@ function App() {
   }
 
   return (
+    <Switch>
+      <Route path="/" component={HomePage} />
+    </Switch>
+  );
+}
+
+function App() {
+  return (
     <QueryClientProvider client={queryClient}>
-      <Switch>
-        <Route path="/" component={HomePage} />
-      </Switch>
+      <AppContent />
       <Toaster />
     </QueryClientProvider>
   );
