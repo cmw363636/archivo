@@ -29,6 +29,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Users, Image } from "lucide-react";
 import { format } from "date-fns";
+import type { User } from "@db/schema";
 
 type Album = {
   id: number;
@@ -57,6 +58,11 @@ type Album = {
   }>;
 };
 
+type NewMemberData = {
+  userId: number | null;
+  canEdit: boolean;
+};
+
 export default function AlbumManager() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -68,8 +74,8 @@ export default function AlbumManager() {
     description: "",
     isShared: false,
   });
-  const [newMemberData, setNewMemberData] = useState({
-    userId: "",
+  const [newMemberData, setNewMemberData] = useState<NewMemberData>({
+    userId: null,
     canEdit: false,
   });
 
@@ -77,7 +83,7 @@ export default function AlbumManager() {
     queryKey: ["/api/albums"],
   });
 
-  const { data: users = [] } = useQuery({
+  const { data: users = [] } = useQuery<User[]>({
     queryKey: ["/api/users"],
   });
 
@@ -120,7 +126,7 @@ export default function AlbumManager() {
       data,
     }: {
       albumId: number;
-      data: typeof newMemberData;
+      data: { userId: number; canEdit: boolean };
     }) => {
       const response = await fetch(`/api/albums/${albumId}/members`, {
         method: "POST",
@@ -138,7 +144,7 @@ export default function AlbumManager() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/albums"] });
       setIsAddMemberOpen(false);
-      setNewMemberData({ userId: "", canEdit: false });
+      setNewMemberData({ userId: null, canEdit: false });
       toast({
         title: "Success",
         description: "Member added successfully",
@@ -160,11 +166,12 @@ export default function AlbumManager() {
 
   const handleAddMember = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedAlbum) return;
+    if (!selectedAlbum || !newMemberData.userId) return;
+
     addMemberMutation.mutate({
       albumId: selectedAlbum.id,
       data: {
-        userId: parseInt(newMemberData.userId),
+        userId: newMemberData.userId,
         canEdit: newMemberData.canEdit,
       },
     });
@@ -274,7 +281,7 @@ export default function AlbumManager() {
           setIsAddMemberOpen(open);
           if (!open) {
             setSelectedAlbum(null);
-            setNewMemberData({ userId: "", canEdit: false });
+            setNewMemberData({ userId: null, canEdit: false });
           }
         }}
       >
@@ -289,9 +296,9 @@ export default function AlbumManager() {
             <div className="space-y-2">
               <Label htmlFor="userId">Select Member</Label>
               <Select
-                value={newMemberData.userId.toString()}
+                value={newMemberData.userId?.toString() || ""}
                 onValueChange={(value) =>
-                  setNewMemberData({ ...newMemberData, userId: value })
+                  setNewMemberData({ ...newMemberData, userId: parseInt(value, 10) })
                 }
               >
                 <SelectTrigger>
