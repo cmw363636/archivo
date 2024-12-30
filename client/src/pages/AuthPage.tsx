@@ -33,6 +33,10 @@ export default function AuthPage() {
           displayName: displayName || username 
         });
       }
+      // Reset form after successful submission
+      setUsername("");
+      setPassword("");
+      setDisplayName("");
     } catch (error: any) {
       toast({
         title: "Error",
