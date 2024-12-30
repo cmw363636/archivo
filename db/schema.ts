@@ -18,9 +18,26 @@ export const familyRelations = pgTable("family_relations", {
   relationType: text("relation_type").notNull(), // parent, child, spouse, sibling
 });
 
+export const albums = pgTable("albums", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  createdBy: integer("created_by").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  isShared: boolean("is_shared").default(false).notNull(),
+});
+
+export const albumMembers = pgTable("album_members", {
+  id: serial("id").primaryKey(),
+  albumId: integer("album_id").references(() => albums.id).notNull(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  canEdit: boolean("can_edit").default(false).notNull(),
+});
+
 export const mediaItems = pgTable("media_items", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").references(() => users.id).notNull(),
+  albumId: integer("album_id").references(() => albums.id),
   type: text("type").notNull(), // photo, video, audio, document
   title: text("title").notNull(),
   description: text("description"),
@@ -41,6 +58,28 @@ export const usersRelations = relations(users, ({ many }) => ({
   mediaTags: many(mediaTags),
   familyRelationsFrom: many(familyRelations, { relationName: "fromUser" }),
   familyRelationsTo: many(familyRelations, { relationName: "toUser" }),
+  albums: many(albums, { relationName: "createdAlbums" }),
+  albumMemberships: many(albumMembers),
+}));
+
+export const albumsRelations = relations(albums, ({ one, many }) => ({
+  creator: one(users, {
+    fields: [albums.createdBy],
+    references: [users.id],
+  }),
+  members: many(albumMembers),
+  mediaItems: many(mediaItems),
+}));
+
+export const albumMembersRelations = relations(albumMembers, ({ one }) => ({
+  album: one(albums, {
+    fields: [albumMembers.albumId],
+    references: [albums.id],
+  }),
+  user: one(users, {
+    fields: [albumMembers.userId],
+    references: [users.id],
+  }),
 }));
 
 export const mediaItemsRelations = relations(mediaItems, ({ one, many }) => ({
@@ -48,10 +87,11 @@ export const mediaItemsRelations = relations(mediaItems, ({ one, many }) => ({
     fields: [mediaItems.userId],
     references: [users.id],
   }),
-  tags: many(mediaTags, {
-    fields: [mediaItems.id],
-    references: [mediaTags.mediaId],
+  album: one(albums, {
+    fields: [mediaItems.albumId],
+    references: [albums.id],
   }),
+  tags: many(mediaTags),
 }));
 
 export const mediaTagsRelations = relations(mediaTags, ({ one }) => ({
@@ -81,9 +121,13 @@ export const insertUserSchema = createInsertSchema(users);
 export const selectUserSchema = createSelectSchema(users);
 export const insertMediaItemSchema = createInsertSchema(mediaItems);
 export const selectMediaItemSchema = createSelectSchema(mediaItems);
+export const insertAlbumSchema = createInsertSchema(albums);
+export const selectAlbumSchema = createSelectSchema(albums);
 
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 export type MediaItem = typeof mediaItems.$inferSelect;
 export type InsertMediaItem = typeof mediaItems.$inferInsert;
+export type Album = typeof albums.$inferSelect;
+export type InsertAlbum = typeof albums.$inferInsert;

@@ -4,6 +4,7 @@ import { useUser } from "../hooks/use-user";
 import MediaGallery from "../components/MediaGallery";
 import FamilyTree from "../components/FamilyTree";
 import MediaUpload from "../components/MediaUpload";
+import AlbumManager from "../components/AlbumManager";
 import {
   Sheet,
   SheetContent,
@@ -13,14 +14,14 @@ import { Menu } from "lucide-react";
 
 export default function HomePage() {
   const { user, logout } = useUser();
-  const [view, setView] = useState<"gallery" | "tree">("gallery");
+  const [view, setView] = useState<"gallery" | "tree" | "albums">("gallery");
 
   return (
     <div className="min-h-screen bg-orange-50">
       <header className="bg-white border-b shadow-sm">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <h1 className="text-2xl font-bold text-primary">Family Media</h1>
-          
+
           <div className="flex items-center gap-4">
             <Sheet>
               <SheetTrigger asChild>
@@ -35,6 +36,12 @@ export default function HomePage() {
                     onClick={() => setView("gallery")}
                   >
                     Media Gallery
+                  </Button>
+                  <Button
+                    variant={view === "albums" ? "default" : "ghost"}
+                    onClick={() => setView("albums")}
+                  >
+                    Albums
                   </Button>
                   <Button
                     variant={view === "tree" ? "default" : "ghost"}
@@ -57,6 +64,12 @@ export default function HomePage() {
                 Media Gallery
               </Button>
               <Button
+                variant={view === "albums" ? "default" : "ghost"}
+                onClick={() => setView("albums")}
+              >
+                Albums
+              </Button>
+              <Button
                 variant={view === "tree" ? "default" : "ghost"}
                 onClick={() => setView("tree")}
               >
@@ -76,6 +89,8 @@ export default function HomePage() {
             <MediaUpload />
             <MediaGallery />
           </>
+        ) : view === "albums" ? (
+          <AlbumManager />
         ) : (
           <FamilyTree />
         )}

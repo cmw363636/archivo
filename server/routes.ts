@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { db } from "@db";
-import { mediaItems, mediaTags, familyRelations, users } from "@db/schema";
+import { mediaItems, mediaTags, familyRelations, users, albums, albumMembers } from "@db/schema";
 import { and, eq, or } from "drizzle-orm";
 import multer from "multer";
 import path from "path";
@@ -49,6 +49,82 @@ export function registerRoutes(app: Express): Server {
     res.json(allUsers);
   });
 
+  // Albums endpoints
+  app.get("/api/albums", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const userAlbums = await db.query.albums.findMany({
+      where: or(
+        eq(albums.createdBy, req.user.id),
+        eq(albumMembers.userId, req.user.id)
+      ),
+      with: {
+        creator: true,
+        members: {
+          with: {
+            user: true,
+          },
+        },
+        mediaItems: true,
+      },
+    });
+
+    res.json(userAlbums);
+  });
+
+  app.post("/api/albums", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const { name, description, isShared } = req.body;
+
+    const [album] = await db
+      .insert(albums)
+      .values({
+        name,
+        description,
+        createdBy: req.user.id,
+        isShared: isShared || false,
+      })
+      .returning();
+
+    res.json(album);
+  });
+
+  app.post("/api/albums/:albumId/members", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const { albumId } = req.params;
+    const { userId, canEdit } = req.body;
+
+    // Check if user has permission to add members
+    const [album] = await db
+      .select()
+      .from(albums)
+      .where(eq(albums.id, parseInt(albumId)))
+      .limit(1);
+
+    if (!album || album.createdBy !== req.user.id) {
+      return res.status(403).send("Not authorized to add members to this album");
+    }
+
+    const [member] = await db
+      .insert(albumMembers)
+      .values({
+        albumId: parseInt(albumId),
+        userId,
+        canEdit: canEdit || false,
+      })
+      .returning();
+
+    res.json(member);
+  });
+
   // Media endpoints
   app.get("/api/media", async (req, res) => {
     if (!req.isAuthenticated()) {
@@ -73,13 +149,36 @@ export function registerRoutes(app: Express): Server {
       return res.status(400).send("No file uploaded");
     }
 
-    const { type, title, description } = req.body;
+    const { type, title, description, albumId } = req.body;
     const url = `/uploads/${req.file.filename}`;
+
+    // If albumId is provided, check if user has permission to add to album
+    if (albumId) {
+      const [album] = await db
+        .select()
+        .from(albums)
+        .where(eq(albums.id, parseInt(albumId)))
+        .limit(1);
+
+      const [member] = await db
+        .select()
+        .from(albumMembers)
+        .where(and(
+          eq(albumMembers.albumId, parseInt(albumId)),
+          eq(albumMembers.userId, req.user.id)
+        ))
+        .limit(1);
+
+      if (!album || (!member && album.createdBy !== req.user.id)) {
+        return res.status(403).send("Not authorized to add media to this album");
+      }
+    }
 
     const [item] = await db
       .insert(mediaItems)
       .values({
         userId: req.user.id,
+        albumId: albumId ? parseInt(albumId) : null,
         type,
         title,
         description,
