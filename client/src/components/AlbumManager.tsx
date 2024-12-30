@@ -28,7 +28,6 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Users, Image } from "lucide-react";
-import { format } from "date-fns";
 import type { User } from "@db/schema";
 
 type Album = {
@@ -38,23 +37,19 @@ type Album = {
   createdBy: number;
   createdAt: string;
   isShared: boolean;
-  creator: {
-    username: string;
-    displayName: string;
-  };
-  members: Array<{
-    userId: number;
-    canEdit: boolean;
-    user: {
-      username: string;
-      displayName: string;
-    };
-  }>;
-  mediaItems: Array<{
+  mediaItems?: Array<{
     id: number;
     title: string;
     type: string;
     url: string;
+  }>;
+  members?: Array<{
+    userId: number;
+    canEdit: boolean;
+    user?: {
+      username: string;
+      displayName: string;
+    };
   }>;
 };
 
@@ -181,6 +176,11 @@ export default function AlbumManager() {
     return <div>Loading albums...</div>;
   }
 
+  const getCreatorName = (albumCreatorId: number) => {
+    const creator = users.find(user => user.id === albumCreatorId);
+    return creator?.displayName || creator?.username || 'Unknown User';
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -197,7 +197,7 @@ export default function AlbumManager() {
             <CardHeader>
               <CardTitle>{album.name}</CardTitle>
               <CardDescription>
-                Created by {album.creator.displayName || album.creator.username}
+                Created by {getCreatorName(album.createdBy)}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -209,11 +209,11 @@ export default function AlbumManager() {
               <div className="flex items-center gap-4 text-sm text-muted-foreground">
                 <div className="flex items-center gap-1">
                   <Image className="h-4 w-4" />
-                  {album.mediaItems.length} items
+                  {(album.mediaItems?.length || 0)} items
                 </div>
                 <div className="flex items-center gap-1">
                   <Users className="h-4 w-4" />
-                  {album.members.length + 1} members
+                  {(album.members?.length || 0) + 1} members
                 </div>
               </div>
             </CardContent>
@@ -311,7 +311,7 @@ export default function AlbumManager() {
                       // Filter out creator and existing members
                       return (
                         user.id !== selectedAlbum.createdBy &&
-                        !selectedAlbum.members.some(
+                        !selectedAlbum.members?.some(
                           (member) => member.userId === user.id
                         )
                       );
