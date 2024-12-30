@@ -10,6 +10,7 @@ export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [displayName, setDisplayName] = useState("");
   const { login, register } = useUser();
   const { toast } = useToast();
 
@@ -17,9 +18,9 @@ export default function AuthPage() {
     e.preventDefault();
     try {
       if (isLogin) {
-        await login({ username, password });
+        await login({ username, password, displayName: username });
       } else {
-        await register({ username, password });
+        await register({ username, password, displayName: displayName || username });
       }
     } catch (error: any) {
       toast({
@@ -32,9 +33,11 @@ export default function AuthPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-orange-50">
-      <Card className="w-[350px]">
+      <Card className="w-[400px]">
         <CardHeader>
-          <CardTitle>{isLogin ? "Login" : "Register"}</CardTitle>
+          <CardTitle className="text-2xl text-center">
+            {isLogin ? "Welcome Back" : "Join Your Family"}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -45,8 +48,21 @@ export default function AuthPage() {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 required
+                className="bg-white"
               />
             </div>
+            {!isLogin && (
+              <div className="space-y-2">
+                <Label htmlFor="displayName">Display Name</Label>
+                <Input
+                  id="displayName"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  placeholder="How should we call you?"
+                  className="bg-white"
+                />
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <Input
@@ -55,10 +71,11 @@ export default function AuthPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                className="bg-white"
               />
             </div>
             <Button type="submit" className="w-full">
-              {isLogin ? "Login" : "Register"}
+              {isLogin ? "Login" : "Create Account"}
             </Button>
             <Button
               type="button"
