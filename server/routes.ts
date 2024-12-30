@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { db } from "@db";
-import { mediaItems, mediaTags, familyRelations } from "@db/schema";
+import { mediaItems, mediaTags, familyRelations, users } from "@db/schema";
 import { and, eq, or } from "drizzle-orm";
 import multer from "multer";
 import path from "path";
@@ -31,6 +31,23 @@ export function registerRoutes(app: Express): Server {
 
   // Serve uploaded files
   app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+
+  // Get all users (for family relations)
+  app.get("/api/users", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const allUsers = await db
+      .select({
+        id: users.id,
+        username: users.username,
+        displayName: users.displayName,
+      })
+      .from(users);
+
+    res.json(allUsers);
+  });
 
   // Media endpoints
   app.get("/api/media", async (req, res) => {
@@ -103,6 +120,13 @@ export function registerRoutes(app: Express): Server {
     }
 
     const { toUserId, relationType } = req.body;
+
+    // Validate relation type
+    const validRelationTypes = ['parent', 'child', 'sibling', 'spouse'];
+    if (!validRelationTypes.includes(relationType)) {
+      return res.status(400).send("Invalid relation type");
+    }
+
     const [relation] = await db
       .insert(familyRelations)
       .values({

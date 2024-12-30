@@ -1,4 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Card,
   CardContent,
@@ -11,10 +12,19 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useUser } from "../hooks/use-user";
-import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 type FamilyMember = {
   id: number;
@@ -33,15 +43,57 @@ type FamilyRelation = {
 
 export default function FamilyTree() {
   const { user } = useUser();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [selectedMember, setSelectedMember] = useState<FamilyMember | null>(null);
+  const [isAddingRelation, setIsAddingRelation] = useState(false);
+  const [relationType, setRelationType] = useState<string>("");
 
   const { data: relations = [], isLoading } = useQuery<FamilyRelation[]>({
     queryKey: ["/api/family"],
     enabled: !!user,
   });
 
+  const { data: allUsers = [] } = useQuery<FamilyMember[]>({
+    queryKey: ["/api/users"],
+    enabled: !!user,
+  });
+
+  const addRelationMutation = useMutation({
+    mutationFn: async (data: { toUserId: number; relationType: string }) => {
+      const response = await fetch("/api/family", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/family"] });
+      setIsAddingRelation(false);
+      setRelationType("");
+      toast({
+        title: "Success",
+        description: "Family relation added successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   if (!user) {
-    return null; // Let the parent handle the unauthorized state
+    return null;
   }
 
   if (isLoading) {
@@ -195,11 +247,16 @@ export default function FamilyTree() {
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader>
-          <CardTitle>Family Tree</CardTitle>
-          <CardDescription>
-            Visualizing your family connections
-          </CardDescription>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>Family Tree</CardTitle>
+            <CardDescription>
+              Visualizing your family connections
+            </CardDescription>
+          </div>
+          <Button onClick={() => setIsAddingRelation(true)}>
+            Add Relation
+          </Button>
         </CardHeader>
         <CardContent className="flex justify-center">
           {renderTreeSvg()}
@@ -213,6 +270,7 @@ export default function FamilyTree() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{selectedMember?.displayName || selectedMember?.username}</DialogTitle>
+            <DialogDescription>Family relations for this member</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
@@ -225,7 +283,7 @@ export default function FamilyTree() {
                       r.toUserId === selectedMember?.id
                   )
                   .map((relation) => (
-                    <li key={relation.id}>
+                    <li key={relation.id} className="text-sm">
                       {relation.fromUserId === selectedMember?.id
                         ? `${relation.relationType} of ${relation.toUser.displayName || relation.toUser.username}`
                         : `${relation.fromUser.displayName || relation.fromUser.username}'s ${relation.relationType}`}
@@ -233,6 +291,77 @@ export default function FamilyTree() {
                   ))}
               </ul>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog 
+        open={isAddingRelation} 
+        onOpenChange={setIsAddingRelation}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Family Relation</DialogTitle>
+            <DialogDescription>
+              Select a family member and specify their relation to you
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Select Member</label>
+              <Select
+                onValueChange={(value) => {
+                  const member = allUsers.find(u => u.id === parseInt(value));
+                  member && setSelectedMember(member);
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a family member" />
+                </SelectTrigger>
+                <SelectContent>
+                  {allUsers
+                    .filter((u) => u.id !== user.id)
+                    .map((user) => (
+                      <SelectItem key={user.id} value={user.id.toString()}>
+                        {user.displayName || user.username}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Relation Type</label>
+              <Select
+                value={relationType}
+                onValueChange={setRelationType}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select relation type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="parent">Parent</SelectItem>
+                  <SelectItem value="child">Child</SelectItem>
+                  <SelectItem value="sibling">Sibling</SelectItem>
+                  <SelectItem value="spouse">Spouse</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <Button
+              className="w-full"
+              disabled={!selectedMember || !relationType}
+              onClick={() => {
+                if (selectedMember) {
+                  addRelationMutation.mutate({
+                    toUserId: selectedMember.id,
+                    relationType,
+                  });
+                }
+              }}
+            >
+              Add Relation
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
