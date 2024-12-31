@@ -191,6 +191,38 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Media endpoints
+  app.get("/api/media", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    try {
+      const items = await db.query.mediaItems.findMany({
+        where: eq(mediaItems.userId, req.user.id),
+        with: {
+          tags: true,
+        },
+        orderBy: (mediaItems, { desc }) => [desc(mediaItems.createdAt)],
+      });
+
+      console.log('Fetched media items:', {
+        count: items.length,
+        items: items.map(item => ({
+          id: item.id,
+          type: item.type,
+          url: item.url
+        }))
+      });
+
+      res.json(items);
+    } catch (error) {
+      console.error('Error fetching media items:', error);
+      res.status(500).send("Error fetching media items");
+    }
+  });
+
+
   // Get all users (for family relations)
   app.get("/api/users", async (req, res) => {
     if (!req.isAuthenticated()) {
