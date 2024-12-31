@@ -231,7 +231,7 @@ export function registerRoutes(app: Express): Server {
       const albumId = req.query.albumId ? parseInt(req.query.albumId as string) : undefined;
 
       const items = await db.query.mediaItems.findMany({
-        where: albumId 
+        where: albumId
           ? and(
               eq(mediaItems.userId, req.user.id),
               eq(mediaItems.albumId, albumId)
@@ -259,23 +259,6 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-
-  // Get all users (for family relations)
-  app.get("/api/users", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).send("Not authenticated");
-    }
-
-    const allUsers = await db
-      .select({
-        id: users.id,
-        username: users.username,
-        displayName: users.displayName,
-      })
-      .from(users);
-
-    res.json(allUsers);
-  });
 
   // Albums endpoints
   app.get("/api/albums", async (req, res) => {
@@ -365,6 +348,63 @@ export function registerRoutes(app: Express): Server {
       .returning();
 
     res.json(member);
+  });
+
+  // Add media to album endpoint
+  app.post("/api/albums/:albumId/media/:mediaId", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const { albumId, mediaId } = req.params;
+
+    try {
+      // Check if user has permission to add media to this album
+      const [album] = await db
+        .select()
+        .from(albums)
+        .where(eq(albums.id, parseInt(albumId)))
+        .limit(1);
+
+      if (!album) {
+        return res.status(404).send("Album not found");
+      }
+
+      // Check if user is album creator or has edit permissions
+      const [member] = album.createdBy === req.user.id
+        ? [true]
+        : await db
+            .select()
+            .from(albumMembers)
+            .where(
+              and(
+                eq(albumMembers.albumId, parseInt(albumId)),
+                eq(albumMembers.userId, req.user.id),
+                eq(albumMembers.canEdit, true)
+              )
+            )
+            .limit(1);
+
+      if (!member) {
+        return res.status(403).send("Not authorized to add media to this album");
+      }
+
+      // Update the media item to be part of this album
+      await db
+        .update(mediaItems)
+        .set({ albumId: parseInt(albumId) })
+        .where(
+          and(
+            eq(mediaItems.id, parseInt(mediaId)),
+            eq(mediaItems.userId, req.user.id)
+          )
+        );
+
+      res.json({ message: "Media added to album successfully" });
+    } catch (error) {
+      console.error('Error adding media to album:', error);
+      res.status(500).send("Error adding media to album");
+    }
   });
 
   // Family relations endpoints

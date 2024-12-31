@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useMedia } from "../hooks/use-media";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Card,
   CardContent,
@@ -17,6 +18,14 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import {
   Image,
   FileText,
   Music,
@@ -26,8 +35,10 @@ import {
   AlertCircle,
   ExternalLink,
   Link as LinkIcon,
+  FolderPlus,
 } from "lucide-react";
 import { format } from "date-fns";
+import { useToast } from "@/hooks/use-toast";
 
 enum MediaError {
   MEDIA_ERR_ABORTED = 1,
@@ -48,6 +59,11 @@ interface MediaItem {
   metadata?: { mimetype?: string };
 }
 
+interface Album {
+  id: number;
+  name: string;
+}
+
 interface MediaGalleryProps {
   albumId?: number;
 }
@@ -57,6 +73,57 @@ export function MediaGallery({ albumId }: MediaGalleryProps) {
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [mediaErrors, setMediaErrors] = useState<Record<number, string>>({});
+  const [isAddToAlbumOpen, setIsAddToAlbumOpen] = useState(false);
+  const [selectedMediaId, setSelectedMediaId] = useState<number | null>(null);
+  const [selectedAlbumId, setSelectedAlbumId] = useState<string>("");
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const { data: albums = [] } = useQuery<Album[]>({
+    queryKey: ["/api/albums"],
+  });
+
+  const addToAlbumMutation = useMutation({
+    mutationFn: async ({ albumId, mediaId }: { albumId: number; mediaId: number }) => {
+      const response = await fetch(`/api/albums/${albumId}/media/${mediaId}`, {
+        method: "POST",
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/media"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/albums"] });
+      toast({
+        title: "Success",
+        description: "Media added to album successfully",
+      });
+      setIsAddToAlbumOpen(false);
+      setSelectedMediaId(null);
+      setSelectedAlbumId("");
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleAddToAlbum = () => {
+    if (!selectedMediaId || !selectedAlbumId) return;
+
+    addToAlbumMutation.mutate({
+      albumId: parseInt(selectedAlbumId),
+      mediaId: selectedMediaId,
+    });
+  };
 
   const filteredItems = mediaItems.filter((item) => {
     const matchesSearch = item.title
@@ -80,23 +147,6 @@ export function MediaGallery({ albumId }: MediaGalleryProps) {
         return <FileText className="h-5 w-5" />;
     }
   };
-
-  if (isLoading) {
-    return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
-        {[...Array(6)].map((_, i) => (
-          <Card key={i}>
-            <CardHeader>
-              <Skeleton className="h-4 w-3/4" />
-            </CardHeader>
-            <CardContent>
-              <Skeleton className="h-48 w-full" />
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    );
-  }
 
   const handleMediaError = (error: Error, mediaType: string, element: HTMLMediaElement) => {
     console.error(`${mediaType} playback error:`, {
@@ -233,6 +283,23 @@ export function MediaGallery({ albumId }: MediaGalleryProps) {
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+        {[...Array(6)].map((_, i) => (
+          <Card key={i}>
+            <CardHeader>
+              <Skeleton className="h-4 w-3/4" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-48 w-full" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col md:flex-row gap-4">
@@ -286,11 +353,24 @@ export function MediaGallery({ albumId }: MediaGalleryProps) {
                 </p>
               )}
             </CardContent>
-            <CardFooter className="text-sm text-muted-foreground">
-              <div className="flex items-center gap-1">
+            <CardFooter className="flex justify-between items-center">
+              <div className="flex items-center gap-1 text-sm text-muted-foreground">
                 <Calendar className="h-4 w-4" />
                 {format(new Date(item.createdAt), "PPP")}
               </div>
+              {!albumId && ( // Only show Add to Album button when not in album view
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setSelectedMediaId(item.id);
+                    setIsAddToAlbumOpen(true);
+                  }}
+                >
+                  <FolderPlus className="h-4 w-4 mr-2" />
+                  Add to Album
+                </Button>
+              )}
             </CardFooter>
           </Card>
         ))}
@@ -301,6 +381,51 @@ export function MediaGallery({ albumId }: MediaGalleryProps) {
           No media items found.
         </div>
       )}
+
+      {/* Add to Album Dialog */}
+      <Dialog
+        open={isAddToAlbumOpen}
+        onOpenChange={(open) => {
+          setIsAddToAlbumOpen(open);
+          if (!open) {
+            setSelectedMediaId(null);
+            setSelectedAlbumId("");
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add to Album</DialogTitle>
+            <DialogDescription>
+              Select an album to add this media item to
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Select
+              value={selectedAlbumId}
+              onValueChange={setSelectedAlbumId}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select album" />
+              </SelectTrigger>
+              <SelectContent>
+                {albums.map((album) => (
+                  <SelectItem key={album.id} value={album.id.toString()}>
+                    {album.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              className="w-full"
+              disabled={!selectedAlbumId}
+              onClick={handleAddToAlbum}
+            >
+              Add to Album
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
