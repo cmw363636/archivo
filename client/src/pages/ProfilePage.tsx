@@ -17,6 +17,8 @@ import type { MediaItem } from "@db/schema";
 export default function ProfilePage() {
   const { user, logout } = useUser();
   const [view, setView] = useState<"profile" | "gallery" | "tree" | "albums">("profile");
+  const [uploadedExpanded, setUploadedExpanded] = useState(false);
+  const [taggedExpanded, setTaggedExpanded] = useState(false);
 
   // Query for media where user is tagged
   const { data: taggedMedia = [] } = useQuery<MediaItem[]>({
@@ -41,6 +43,10 @@ export default function ProfilePage() {
   if (!user) {
     return null;
   }
+
+  // Get the media items to display based on expanded state
+  const displayedUploadedMedia = uploadedExpanded ? uploadedMedia : uploadedMedia.slice(0, 5);
+  const displayedTaggedMedia = taggedExpanded ? taggedMedia : taggedMedia.slice(0, 5);
 
   return (
     <div className="min-h-screen bg-orange-50">
@@ -128,13 +134,21 @@ export default function ProfilePage() {
 
           {/* Uploaded Media */}
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Uploaded Media</CardTitle>
+              {uploadedMedia.length > 5 && (
+                <Button
+                  variant="ghost"
+                  onClick={() => setUploadedExpanded(!uploadedExpanded)}
+                >
+                  {uploadedExpanded ? 'Show Less' : 'See All'}
+                </Button>
+              )}
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {uploadedMedia.length > 0 ? (
-                  uploadedMedia.map((media) => (
+                {displayedUploadedMedia.length > 0 ? (
+                  displayedUploadedMedia.map((media) => (
                     <div key={media.id} className="flex items-center gap-4">
                       {media.type === 'photo' && (
                         <img 
@@ -165,13 +179,21 @@ export default function ProfilePage() {
 
           {/* Tagged Media */}
           <Card className="md:col-span-2">
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Tagged Media</CardTitle>
+              {taggedMedia.length > 5 && (
+                <Button
+                  variant="ghost"
+                  onClick={() => setTaggedExpanded(!taggedExpanded)}
+                >
+                  {taggedExpanded ? 'Show Less' : 'See All'}
+                </Button>
+              )}
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {taggedMedia.length > 0 ? (
-                  taggedMedia.map((media) => (
+                {displayedTaggedMedia.length > 0 ? (
+                  displayedTaggedMedia.map((media) => (
                     <div key={media.id} className="flex items-center gap-4">
                       {media.type === 'photo' && (
                         <img 
