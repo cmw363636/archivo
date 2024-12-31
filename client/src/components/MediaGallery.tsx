@@ -36,9 +36,12 @@ import {
   ExternalLink,
   Link as LinkIcon,
   FolderPlus,
+  Tag,
+  UserPlus,
 } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import TagUsers from "./TagUsers";
 
 enum MediaError {
   MEDIA_ERR_ABORTED = 1,
@@ -57,6 +60,13 @@ interface MediaItem {
   content?: string | null;
   createdAt: string;
   metadata?: { mimetype?: string };
+  tags?: Array<{
+    userId: number;
+    user: {
+      username: string;
+      displayName: string;
+    };
+  }>;
 }
 
 interface Album {
@@ -78,6 +88,8 @@ export function MediaGallery({ albumId }: MediaGalleryProps) {
   const [selectedAlbumId, setSelectedAlbumId] = useState<string>("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [isTagUsersOpen, setIsTagUsersOpen] = useState(false);
+  const [selectedMediaForTags, setSelectedMediaForTags] = useState<number | null>(null);
 
   const { data: albums = [] } = useQuery<Album[]>({
     queryKey: ["/api/albums"],
@@ -354,23 +366,44 @@ export function MediaGallery({ albumId }: MediaGalleryProps) {
               )}
             </CardContent>
             <CardFooter className="flex justify-between items-center">
-              <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                <Calendar className="h-4 w-4" />
-                {format(new Date(item.createdAt), "PPP")}
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                  <Calendar className="h-4 w-4" />
+                  {format(new Date(item.createdAt), "PPP")}
+                </div>
+                {item.tags && item.tags.length > 0 && (
+                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                    <Tag className="h-4 w-4" />
+                    {item.tags.length} {item.tags.length === 1 ? 'person' : 'people'}
+                  </div>
+                )}
               </div>
-              {!albumId && ( // Only show Add to Album button when not in album view
+              <div className="flex gap-2">
+                {!albumId && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setSelectedMediaId(item.id);
+                      setIsAddToAlbumOpen(true);
+                    }}
+                  >
+                    <FolderPlus className="h-4 w-4 mr-2" />
+                    Add to Album
+                  </Button>
+                )}
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    setSelectedMediaId(item.id);
-                    setIsAddToAlbumOpen(true);
+                    setSelectedMediaForTags(item.id);
+                    setIsTagUsersOpen(true);
                   }}
                 >
-                  <FolderPlus className="h-4 w-4 mr-2" />
-                  Add to Album
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  Tag Users
                 </Button>
-              )}
+              </div>
             </CardFooter>
           </Card>
         ))}
@@ -426,6 +459,20 @@ export function MediaGallery({ albumId }: MediaGalleryProps) {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Tag Users Dialog */}
+      {selectedMediaForTags && (
+        <TagUsers
+          mediaId={selectedMediaForTags}
+          open={isTagUsersOpen}
+          onOpenChange={(open) => {
+            setIsTagUsersOpen(open);
+            if (!open) {
+              setSelectedMediaForTags(null);
+            }
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -42,7 +42,7 @@ export function registerRoutes(app: Express): Server {
     res.status(204).send();
   });
 
-  // Media streaming handler with improved error handling
+  // Media streaming handler with improved error handling and CORS
   app.get('/uploads/:filename', (req, res) => {
     try {
       const filename = req.params.filename;
@@ -71,15 +71,12 @@ export function registerRoutes(app: Express): Server {
       const headers = {
         'Content-Type': mimeType,
         'Accept-Ranges': 'bytes',
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0',
+        'Cross-Origin-Resource-Policy': 'cross-origin',
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
         'Access-Control-Allow-Headers': 'Range, Accept-Ranges, Content-Range, Content-Type',
-        'Cross-Origin-Resource-Policy': 'cross-origin',
-        'Cross-Origin-Opener-Policy': 'same-origin',
-        'Cross-Origin-Embedder-Policy': 'require-corp'
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache'
       };
 
       // Handle range requests (for video/audio streaming)
@@ -259,6 +256,95 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+
+  // Get tags for a media item
+  app.get("/api/media/:mediaId/tags", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const { mediaId } = req.params;
+
+    try {
+      const tags = await db.query.mediaTags.findMany({
+        where: eq(mediaTags.mediaId, parseInt(mediaId)),
+        with: {
+          user: true,
+        },
+      });
+
+      res.json(tags);
+    } catch (error) {
+      console.error('Error fetching media tags:', error);
+      res.status(500).send("Error fetching media tags");
+    }
+  });
+
+  // Add a tag to a media item
+  app.post("/api/media/:mediaId/tags", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const { mediaId } = req.params;
+    const { userId } = req.body;
+
+    try {
+      // Check if tag already exists
+      const [existingTag] = await db
+        .select()
+        .from(mediaTags)
+        .where(
+          and(
+            eq(mediaTags.mediaId, parseInt(mediaId)),
+            eq(mediaTags.userId, userId)
+          )
+        )
+        .limit(1);
+
+      if (existingTag) {
+        return res.status(400).send("User already tagged in this media");
+      }
+
+      const [tag] = await db
+        .insert(mediaTags)
+        .values({
+          mediaId: parseInt(mediaId),
+          userId,
+        })
+        .returning();
+
+      res.json(tag);
+    } catch (error) {
+      console.error('Error adding media tag:', error);
+      res.status(500).send("Error adding media tag");
+    }
+  });
+
+  // Remove a tag from a media item
+  app.delete("/api/media/:mediaId/tags/:userId", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const { mediaId, userId } = req.params;
+
+    try {
+      await db
+        .delete(mediaTags)
+        .where(
+          and(
+            eq(mediaTags.mediaId, parseInt(mediaId)),
+            eq(mediaTags.userId, parseInt(userId))
+          )
+        );
+
+      res.json({ message: "Tag removed successfully" });
+    } catch (error) {
+      console.error('Error removing media tag:', error);
+      res.status(500).send("Error removing media tag");
+    }
+  });
 
   // Albums endpoints
   app.get("/api/albums", async (req, res) => {
