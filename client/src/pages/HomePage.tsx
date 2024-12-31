@@ -5,7 +5,7 @@ import { MediaGallery } from "../components/MediaGallery";
 import FamilyTree from "../components/FamilyTree";
 import MediaUpload from "../components/MediaUpload";
 import AlbumManager from "../components/AlbumManager";
-import { UserProfileEditor } from "../components/UserProfileEditor";
+import { Link } from "wouter";
 import {
   Sheet,
   SheetContent,
@@ -32,8 +32,6 @@ export default function HomePage() {
           <h1 className="text-2xl font-bold text-primary">Family Media</h1>
 
           <div className="flex items-center gap-4">
-            <UserProfileEditor />
-
             <Sheet>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon" className="md:hidden">
@@ -60,6 +58,11 @@ export default function HomePage() {
                   >
                     Family Tree
                   </Button>
+                  <Link href="/profile">
+                    <Button variant="ghost" className="w-full">
+                      Profile
+                    </Button>
+                  </Link>
                   <Button variant="outline" onClick={handleLogout}>
                     Logout
                   </Button>
@@ -86,6 +89,9 @@ export default function HomePage() {
               >
                 Family Tree
               </Button>
+              <Link href="/profile">
+                <Button variant="ghost">Profile</Button>
+              </Link>
               <Button variant="outline" onClick={handleLogout}>
                 Logout
               </Button>

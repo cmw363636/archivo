@@ -3,6 +3,7 @@ import { Loader2 } from "lucide-react";
 import { useUser } from "./hooks/use-user";
 import AuthPage from "./pages/AuthPage";
 import HomePage from "./pages/HomePage";
+import ProfilePage from "./pages/ProfilePage";
 
 function App() {
   const { user, isLoading } = useUser();
@@ -24,6 +25,7 @@ function App() {
   return (
     <Switch>
       <Route path="/" component={HomePage} />
+      <Route path="/profile" component={ProfilePage} />
     </Switch>
   );
 }
