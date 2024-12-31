@@ -33,6 +33,15 @@ export function registerRoutes(app: Express): Server {
   // Setup auth routes first
   setupAuth(app);
 
+  // Enable CORS pre-flight
+  app.options('/uploads/:filename', (req, res) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Range, Accept-Ranges, Content-Range, Content-Type');
+    res.header('Access-Control-Max-Age', '86400'); // 24 hours
+    res.status(204).send();
+  });
+
   // Media streaming handler with improved error handling
   app.get('/uploads/:filename', (req, res) => {
     try {
@@ -45,10 +54,12 @@ export function registerRoutes(app: Express): Server {
         return res.status(403).send('Access denied');
       }
 
-      // Check if file exists
-      if (!fs.existsSync(filePath)) {
-        console.error(`File not found: ${filePath}`);
-        return res.status(404).send('File not found');
+      // Check if file exists and is readable
+      try {
+        fs.accessSync(filePath, fs.constants.R_OK);
+      } catch (error) {
+        console.error(`File not accessible: ${filePath}`, error);
+        return res.status(404).send('File not found or not accessible');
       }
 
       // Get file stats
@@ -66,7 +77,9 @@ export function registerRoutes(app: Express): Server {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
         'Access-Control-Allow-Headers': 'Range, Accept-Ranges, Content-Range, Content-Type',
-        'Cross-Origin-Resource-Policy': 'cross-origin'
+        'Cross-Origin-Resource-Policy': 'cross-origin',
+        'Cross-Origin-Opener-Policy': 'same-origin',
+        'Cross-Origin-Embedder-Policy': 'require-corp'
       };
 
       // Handle range requests (for video/audio streaming)
@@ -76,7 +89,7 @@ export function registerRoutes(app: Express): Server {
         const start = parseInt(parts[0], 10);
         const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
 
-        if (isNaN(start) || isNaN(end) || start >= fileSize || end >= fileSize) {
+        if (isNaN(start) || isNaN(end) || start >= fileSize || end >= fileSize || start > end) {
           res.status(416).send('Requested range not satisfiable');
           return;
         }
