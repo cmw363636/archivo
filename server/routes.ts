@@ -198,12 +198,12 @@ export function registerRoutes(app: Express): Server {
       const [item] = await db
         .insert(mediaItems)
         .values({
-          userId: req.user.id,
+          user_id: req.user.id,
           type,
           title,
           description,
           url,
-          websiteUrl: type === 'post' ? websiteUrl : null,
+          website_url: type === 'post' ? websiteUrl : null,
           content: type === 'post' ? content : null,
           metadata: req.file ? {
             originalName: req.file.originalname,
