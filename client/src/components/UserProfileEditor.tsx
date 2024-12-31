@@ -13,7 +13,6 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { format, isValid, parse } from "date-fns";
-import { User } from "@db/schema";
 
 export function UserProfileEditor() {
   const { user } = useUser();
