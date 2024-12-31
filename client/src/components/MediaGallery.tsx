@@ -216,6 +216,13 @@ export function MediaGallery({ albumId }: MediaGalleryProps) {
                 Visit Website
               </a>
             )}
+            {item.url && (
+              <img
+                src={item.url}
+                alt={item.title}
+                className="w-full h-48 object-cover rounded-md mt-2"
+              />
+            )}
           </div>
         );
       case "photo":
