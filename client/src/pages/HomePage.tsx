@@ -16,6 +16,14 @@ export default function HomePage() {
   const { user, logout } = useUser();
   const [view, setView] = useState<"gallery" | "tree" | "albums">("gallery");
 
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-orange-50">
       <header className="bg-white border-b shadow-sm">
@@ -49,7 +57,7 @@ export default function HomePage() {
                   >
                     Family Tree
                   </Button>
-                  <Button variant="outline" onClick={() => logout()}>
+                  <Button variant="outline" onClick={handleLogout}>
                     Logout
                   </Button>
                 </nav>
@@ -75,7 +83,7 @@ export default function HomePage() {
               >
                 Family Tree
               </Button>
-              <Button variant="outline" onClick={() => logout()}>
+              <Button variant="outline" onClick={handleLogout}>
                 Logout
               </Button>
             </nav>
