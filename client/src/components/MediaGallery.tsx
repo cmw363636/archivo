@@ -80,6 +80,33 @@ export default function MediaGallery() {
             className="w-full h-48 object-cover rounded-md"
           />
         );
+      case "video":
+        return (
+          <div className="w-full h-48 bg-muted rounded-md flex flex-col items-center justify-center p-4">
+            <video
+              controls
+              className="w-full h-full rounded-md"
+              preload="metadata"
+              controlsList="nodownload"
+              onError={(e) => {
+                console.error('Video playback error:', e);
+                const video = e.currentTarget;
+                if (video.error) {
+                  console.error('Video error details:', {
+                    code: video.error.code,
+                    message: video.error.message
+                  });
+                }
+              }}
+            >
+              <source
+                src={item.url}
+                type={item.metadata?.mimetype || 'video/mp4'}
+              />
+              Your browser does not support the video element.
+            </video>
+          </div>
+        );
       case "audio":
         return (
           <div className="w-full h-48 bg-muted rounded-md flex flex-col items-center justify-center p-4">
