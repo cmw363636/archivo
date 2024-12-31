@@ -18,8 +18,15 @@ export default function ProfilePage() {
   const { user, logout } = useUser();
   const [view, setView] = useState<"profile" | "gallery" | "tree" | "albums">("profile");
 
+  // Query for media where user is tagged
   const { data: taggedMedia = [] } = useQuery<MediaItem[]>({
     queryKey: ["/api/media/tagged", user?.id],
+    enabled: !!user,
+  });
+
+  // Query for media uploaded by the user
+  const { data: uploadedMedia = [] } = useQuery<MediaItem[]>({
+    queryKey: ["/api/media"],
     enabled: !!user,
   });
 
@@ -119,8 +126,45 @@ export default function ProfilePage() {
             </CardContent>
           </Card>
 
-          {/* Tagged Media */}
+          {/* Uploaded Media */}
           <Card>
+            <CardHeader>
+              <CardTitle>Uploaded Media</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {uploadedMedia.length > 0 ? (
+                  uploadedMedia.map((media) => (
+                    <div key={media.id} className="flex items-center gap-4">
+                      {media.type === 'photo' && (
+                        <img 
+                          src={media.url} 
+                          alt={media.title}
+                          className="w-16 h-16 object-cover rounded-md"
+                        />
+                      )}
+                      {media.type === 'post' && !media.url && (
+                        <div className="w-16 h-16 bg-muted flex items-center justify-center rounded-md">
+                          <span className="text-xs text-muted-foreground">Post</span>
+                        </div>
+                      )}
+                      <div>
+                        <h4 className="font-medium">{media.title}</h4>
+                        <p className="text-sm text-muted-foreground">
+                          {media.description}
+                        </p>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-muted-foreground">No uploaded media</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Tagged Media */}
+          <Card className="md:col-span-2">
             <CardHeader>
               <CardTitle>Tagged Media</CardTitle>
             </CardHeader>
