@@ -106,15 +106,13 @@ export function UserProfileEditor() {
           <div className="space-y-2">
             <Label>Date of Birth (YYYY-MM-DD)</Label>
             <Input
-              type="text"
-              placeholder="1987-01-01"
+              type="date"
               value={dateInput}
               onChange={(e) => setDateInput(e.target.value)}
-              pattern="\d{4}-\d{2}-\d{2}"
-              title="Please enter date in YYYY-MM-DD format"
+              max={format(new Date(), "yyyy-MM-dd")}
             />
             <p className="text-sm text-muted-foreground">
-              Enter your birth date in YYYY-MM-DD format (e.g., 1987-01-01)
+              Enter your birth date
             </p>
           </div>
           <Button type="submit" className="w-full">
