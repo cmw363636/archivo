@@ -253,6 +253,41 @@ export function registerRoutes(app: Express): Server {
     res.json(relation);
   });
 
+  app.delete("/api/family/:relationId", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const { relationId } = req.params;
+
+    try {
+      // Check if the user has permission to delete this relation
+      const [relation] = await db
+        .select()
+        .from(familyRelations)
+        .where(eq(familyRelations.id, parseInt(relationId)))
+        .limit(1);
+
+      if (!relation) {
+        return res.status(404).send("Relation not found");
+      }
+
+      // Only allow users to delete relations they're part of
+      if (relation.fromUserId !== req.user.id && relation.toUserId !== req.user.id) {
+        return res.status(403).send("Not authorized to delete this relation");
+      }
+
+      await db
+        .delete(familyRelations)
+        .where(eq(familyRelations.id, parseInt(relationId)));
+
+      res.json({ message: "Relation deleted successfully" });
+    } catch (error) {
+      console.error('Error deleting relation:', error);
+      res.status(500).send("Error deleting relation");
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

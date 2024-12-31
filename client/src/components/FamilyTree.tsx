@@ -25,6 +25,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { useUser } from "../hooks/use-user";
 import { useToast } from "@/hooks/use-toast";
+import { Trash2 } from "lucide-react";
 
 type FamilyMember = {
   id: number;
@@ -93,6 +94,41 @@ export default function FamilyTree() {
       });
     },
   });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (relationId: number) => {
+      const response = await fetch(`/api/family/${relationId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/family"] });
+      toast({
+        title: "Success",
+        description: "Relationship deleted successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleDeleteRelation = async (relationId: number) => {
+    try {
+      await deleteMutation.mutateAsync(relationId);
+    } catch (error) {
+      // Error handling is done in the mutation
+    }
+  };
 
   const handleAddRelation = () => {
     if (!selectedRelativeMemberId) {
@@ -321,10 +357,20 @@ export default function FamilyTree() {
                       r.toUserId === selectedMember?.id
                   )
                   .map((relation) => (
-                    <li key={relation.id} className="text-sm">
-                      {relation.fromUserId === selectedMember?.id
-                        ? `${relation.relationType} of ${relation.toUser.displayName || relation.toUser.username}`
-                        : `${relation.fromUser.displayName || relation.fromUser.username}'s ${relation.relationType}`}
+                    <li key={relation.id} className="text-sm flex items-center justify-between">
+                      <span>
+                        {relation.fromUserId === selectedMember?.id
+                          ? `${relation.relationType} of ${relation.toUser.displayName || relation.toUser.username}`
+                          : `${relation.fromUser.displayName || relation.fromUser.username}'s ${relation.relationType}`}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeleteRelation(relation.id)}
+                        className="h-8 w-8 p-0"
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
                     </li>
                   ))}
               </ul>
@@ -334,8 +380,8 @@ export default function FamilyTree() {
       </Dialog>
 
       {/* Add Relation Dialog */}
-      <Dialog 
-        open={isAddingRelation} 
+      <Dialog
+        open={isAddingRelation}
         onOpenChange={(open) => {
           setIsAddingRelation(open);
           if (!open) {
