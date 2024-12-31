@@ -70,6 +70,39 @@ export default function MediaGallery() {
     );
   }
 
+  const renderMediaContent = (item: MediaItem) => {
+    switch (item.type) {
+      case "photo":
+        return (
+          <img
+            src={item.url}
+            alt={item.title}
+            className="w-full h-48 object-cover rounded-md"
+          />
+        );
+      case "audio":
+        return (
+          <div className="w-full h-48 bg-muted rounded-md flex flex-col items-center justify-center p-4">
+            <Music className="h-8 w-8 mb-4" />
+            <audio 
+              controls 
+              className="w-full max-w-md"
+              preload="metadata"
+            >
+              <source src={item.url} type={item.metadata?.mimetype} />
+              Your browser does not support the audio element.
+            </audio>
+          </div>
+        );
+      default:
+        return (
+          <div className="w-full h-48 bg-muted rounded-md flex items-center justify-center">
+            <MediaIcon type={item.type} />
+          </div>
+        );
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col md:flex-row gap-4">
@@ -109,17 +142,7 @@ export default function MediaGallery() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {item.type === "photo" ? (
-                <img
-                  src={item.url}
-                  alt={item.title}
-                  className="w-full h-48 object-cover rounded-md"
-                />
-              ) : (
-                <div className="w-full h-48 bg-muted rounded-md flex items-center justify-center">
-                  <MediaIcon type={item.type} />
-                </div>
-              )}
+              {renderMediaContent(item)}
               {item.description && (
                 <p className="mt-2 text-sm text-muted-foreground">
                   {item.description}
