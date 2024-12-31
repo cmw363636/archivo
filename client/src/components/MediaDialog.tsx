@@ -59,18 +59,19 @@ export function MediaDialog({ media, open, onOpenChange }: MediaDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl">
-        <DialogHeader>
-          <DialogTitle className="flex justify-between items-center">
-            <span>{media.title}</span>
+        <DialogHeader className="mb-4">
+          <div className="flex items-center justify-between">
+            <DialogTitle>{media.title}</DialogTitle>
             <Button
               variant="destructive"
               size="icon"
               onClick={handleDelete}
               disabled={deleteMutation.isPending}
+              className="h-8 w-8"
             >
               <Trash2 className="h-4 w-4" />
             </Button>
-          </DialogTitle>
+          </div>
         </DialogHeader>
         <Card>
           <CardContent className="p-6">
