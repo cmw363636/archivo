@@ -60,7 +60,7 @@ export function MediaDialog({ media, open, onOpenChange }: MediaDialogProps) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl">
         <DialogHeader className="mb-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between pr-8">
             <DialogTitle>{media.title}</DialogTitle>
             <Button
               variant="destructive"
@@ -108,13 +108,13 @@ export function MediaDialog({ media, open, onOpenChange }: MediaDialogProps) {
                 <p className="mt-2 text-muted-foreground">{media.description}</p>
               )}
               {media.type === "post" && media.website_url && (
-                <div className="mt-4 flex items-center gap-2">
-                  <Link2 className="h-4 w-4" />
+                <div className="mt-1 flex items-center gap-1 text-sm text-primary">
+                  <Link2 className="h-3 w-3" />
                   <a
                     href={media.website_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-primary hover:underline"
+                    className="hover:underline"
                   >
                     Visit Website
                   </a>
