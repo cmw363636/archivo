@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useMedia, type MediaItem } from "../hooks/use-media";
+import { useMedia } from "../hooks/use-media";
 import {
   Card,
   CardContent,
@@ -23,6 +23,7 @@ import {
   Video,
   Search,
   Calendar,
+  AlertCircle,
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -30,6 +31,7 @@ export default function MediaGallery() {
   const { mediaItems, isLoading } = useMedia();
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [mediaErrors, setMediaErrors] = useState<Record<number, string>>({});
 
   const filteredItems = mediaItems.filter((item) => {
     const matchesSearch = item.title
@@ -71,6 +73,14 @@ export default function MediaGallery() {
   }
 
   const renderMediaContent = (item: MediaItem) => {
+    const handleError = (error: Error, mediaType: string) => {
+      console.error(`${mediaType} playback error:`, error);
+      setMediaErrors(prev => ({
+        ...prev,
+        [item.id]: `Error playing ${mediaType}: ${error.message}`
+      }));
+    };
+
     switch (item.type) {
       case "photo":
         return (
@@ -78,6 +88,7 @@ export default function MediaGallery() {
             src={item.url}
             alt={item.title}
             className="w-full h-48 object-cover rounded-md"
+            onError={(e) => handleError(e as any as Error, "image")}
           />
         );
       case "video":
@@ -90,19 +101,7 @@ export default function MediaGallery() {
               crossOrigin="anonymous"
               playsInline
               controlsList="nodownload"
-              onError={(e) => {
-                console.error('Video playback error:', e);
-                const video = e.currentTarget;
-                if (video.error) {
-                  console.error('Video error details:', {
-                    code: video.error.code,
-                    message: video.error.message,
-                    networkState: video.networkState,
-                    readyState: video.readyState,
-                    currentSrc: video.currentSrc,
-                  });
-                }
-              }}
+              onError={(e) => handleError(e as any as Error, "video")}
             >
               <source
                 src={item.url}
@@ -122,19 +121,7 @@ export default function MediaGallery() {
               preload="metadata"
               crossOrigin="anonymous"
               controlsList="nodownload"
-              onError={(e) => {
-                console.error('Audio playback error:', e);
-                const audio = e.currentTarget;
-                if (audio.error) {
-                  console.error('Audio error details:', {
-                    code: audio.error.code,
-                    message: audio.error.message,
-                    networkState: audio.networkState,
-                    readyState: audio.readyState,
-                    currentSrc: audio.currentSrc,
-                  });
-                }
-              }}
+              onError={(e) => handleError(e as any as Error, "audio")}
             >
               <source
                 src={item.url}
@@ -193,6 +180,12 @@ export default function MediaGallery() {
             </CardHeader>
             <CardContent>
               {renderMediaContent(item)}
+              {mediaErrors[item.id] && (
+                <div className="mt-2 p-2 bg-destructive/10 text-destructive rounded-md flex items-center gap-2 text-sm">
+                  <AlertCircle className="h-4 w-4" />
+                  {mediaErrors[item.id]}
+                </div>
+              )}
               {item.description && (
                 <p className="mt-2 text-sm text-muted-foreground">
                   {item.description}
