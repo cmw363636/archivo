@@ -42,7 +42,7 @@ export const mediaItems = pgTable("media_items", {
   title: text("title").notNull(),
   description: text("description"),
   url: text("url").notNull(),
-  websiteUrl: text("website_url"), // New field for post type
+  website_url: text("website_url"), // New field for post type (using snake_case)
   content: text("content"), // New field for post type
   metadata: jsonb("metadata"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
