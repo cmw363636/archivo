@@ -2,7 +2,7 @@ import { useUser } from "../hooks/use-user";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Link } from "wouter";
+import { Link, useParams } from "wouter";
 import type { MediaItem } from "@db/schema";
 import { Menu, Link2 } from "lucide-react";
 import { useState } from "react";
@@ -15,11 +15,31 @@ import {
 
 export default function UploadedMediaPage() {
   const { user, logout } = useUser();
+  const params = useParams();
   const [selectedMedia, setSelectedMedia] = useState<MediaItem | null>(null);
 
+  // Get userId from URL params or fall back to current user's ID
+  const userId = params.id ? parseInt(params.id) : user?.id;
+  const isOwnProfile = userId === user?.id;
+
+  // Query for the profile user's data if it's not the current user
+  const { data: profileUser } = useQuery({
+    queryKey: ["/api/users", userId],
+    enabled: !!userId && !isOwnProfile,
+  });
+
   const { data: uploadedMedia = [] } = useQuery<MediaItem[]>({
-    queryKey: ["/api/media"],
-    enabled: !!user,
+    queryKey: ["/api/media", userId],
+    queryFn: async () => {
+      const response = await fetch(`/api/media?userId=${userId}`, {
+        credentials: 'include'
+      });
+      if (!response.ok) {
+        throw new Error('Failed to fetch uploaded media');
+      }
+      return response.json();
+    },
+    enabled: !!userId,
   });
 
   const handleLogout = async () => {
@@ -100,7 +120,9 @@ export default function UploadedMediaPage() {
       <main className="container mx-auto px-4 py-8">
         <Card>
           <CardHeader>
-            <CardTitle>All Uploaded Media</CardTitle>
+            <CardTitle>
+              {isOwnProfile ? "My Uploaded Media" : `${profileUser?.displayName || profileUser?.username}'s Uploaded Media`}
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
