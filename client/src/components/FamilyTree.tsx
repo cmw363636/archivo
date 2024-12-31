@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Link } from "wouter";
 import {
   Card,
   CardContent,
@@ -239,29 +240,31 @@ export default function FamilyTree() {
 
     // Position current user at center
     const userNode = (
-      <g key={user.id} transform={`translate(${centerX},${centerY})`}>
-        <circle
-          r={nodeRadius}
-          fill="hsl(var(--primary))"
-          className="stroke-2 stroke-white"
-        />
-        <text
-          textAnchor="middle"
-          dy=".3em"
-          fill="white"
-          className="text-sm font-medium"
-        >
-          {user.displayName || user.username}
-        </text>
-      </g>
+      <Link href={`/profile/${user.id}`} key={user.id}>
+        <g transform={`translate(${centerX},${centerY})`}>
+          <circle
+            r={nodeRadius}
+            fill="hsl(var(--primary))"
+            className="stroke-2 stroke-white cursor-pointer"
+          />
+          <text
+            textAnchor="middle"
+            dy=".3em"
+            fill="white"
+            className="text-sm font-medium pointer-events-none"
+          >
+            {user.displayName || user.username}
+          </text>
+        </g>
+      </Link>
     );
 
     // Group family members by their relationship to the user
     const familyGroups = relations.reduce((acc, relation) => {
       const isFromUser = relation.fromUserId === user.id;
       const member = isFromUser ? relation.toUser : relation.fromUser;
-      const type = isFromUser 
-        ? relation.relationType 
+      const type = isFromUser
+        ? relation.relationType
         : relationTypeMap[relation.relationType as keyof typeof relationTypeMap];
 
       if (!acc[type]) {
@@ -284,26 +287,26 @@ export default function FamilyTree() {
         const y = centerY - verticalSpacing;
 
         memberNodes.push(
-          <g
-            key={parent.id}
-            transform={`translate(${x},${y})`}
-            className="cursor-pointer"
-            onClick={() => setSelectedMember(parent)}
-          >
-            <circle
-              r={nodeRadius}
-              fill="hsl(var(--secondary))"
-              className="stroke-2 stroke-white"
-            />
-            <text
-              textAnchor="middle"
-              dy=".3em"
-              fill="hsl(var(--secondary-foreground))"
-              className="text-sm font-medium"
+          <Link href={`/profile/${parent.id}`} key={parent.id}>
+            <g
+              transform={`translate(${x},${y})`}
+              className="cursor-pointer"
             >
-              {parent.displayName || parent.username}
-            </text>
-          </g>
+              <circle
+                r={nodeRadius}
+                fill="hsl(var(--secondary))"
+                className="stroke-2 stroke-white"
+              />
+              <text
+                textAnchor="middle"
+                dy=".3em"
+                fill="hsl(var(--secondary-foreground))"
+                className="text-sm font-medium pointer-events-none"
+              >
+                {parent.displayName || parent.username}
+              </text>
+            </g>
+          </Link>
         );
 
         relationLines.push(
@@ -316,6 +319,7 @@ export default function FamilyTree() {
             stroke="hsl(var(--border))"
             strokeWidth="2"
             markerEnd="url(#arrowhead)"
+            className="pointer-events-none"
           />
         );
       });
@@ -329,26 +333,26 @@ export default function FamilyTree() {
         const y = centerY + verticalSpacing;
 
         memberNodes.push(
-          <g
-            key={child.id}
-            transform={`translate(${x},${y})`}
-            className="cursor-pointer"
-            onClick={() => setSelectedMember(child)}
-          >
-            <circle
-              r={nodeRadius}
-              fill="hsl(var(--secondary))"
-              className="stroke-2 stroke-white"
-            />
-            <text
-              textAnchor="middle"
-              dy=".3em"
-              fill="hsl(var(--secondary-foreground))"
-              className="text-sm font-medium"
+          <Link href={`/profile/${child.id}`} key={child.id}>
+            <g
+              transform={`translate(${x},${y})`}
+              className="cursor-pointer"
             >
-              {child.displayName || child.username}
-            </text>
-          </g>
+              <circle
+                r={nodeRadius}
+                fill="hsl(var(--secondary))"
+                className="stroke-2 stroke-white"
+              />
+              <text
+                textAnchor="middle"
+                dy=".3em"
+                fill="hsl(var(--secondary-foreground))"
+                className="text-sm font-medium pointer-events-none"
+              >
+                {child.displayName || child.username}
+              </text>
+            </g>
+          </Link>
         );
 
         relationLines.push(
@@ -361,6 +365,7 @@ export default function FamilyTree() {
             stroke="hsl(var(--border))"
             strokeWidth="2"
             markerEnd="url(#arrowhead)"
+            className="pointer-events-none"
           />
         );
       });
@@ -373,26 +378,26 @@ export default function FamilyTree() {
         const y = centerY;
 
         memberNodes.push(
-          <g
-            key={spouse.id}
-            transform={`translate(${x},${y})`}
-            className="cursor-pointer"
-            onClick={() => setSelectedMember(spouse)}
-          >
-            <circle
-              r={nodeRadius}
-              fill="hsl(var(--secondary))"
-              className="stroke-2 stroke-white"
-            />
-            <text
-              textAnchor="middle"
-              dy=".3em"
-              fill="hsl(var(--secondary-foreground))"
-              className="text-sm font-medium"
+          <Link href={`/profile/${spouse.id}`} key={spouse.id}>
+            <g
+              transform={`translate(${x},${y})`}
+              className="cursor-pointer"
             >
-              {spouse.displayName || spouse.username}
-            </text>
-          </g>
+              <circle
+                r={nodeRadius}
+                fill="hsl(var(--secondary))"
+                className="stroke-2 stroke-white"
+              />
+              <text
+                textAnchor="middle"
+                dy=".3em"
+                fill="hsl(var(--secondary-foreground))"
+                className="text-sm font-medium pointer-events-none"
+              >
+                {spouse.displayName || spouse.username}
+              </text>
+            </g>
+          </Link>
         );
 
         relationLines.push(
@@ -405,6 +410,7 @@ export default function FamilyTree() {
             stroke="hsl(var(--border))"
             strokeWidth="2"
             markerEnd="url(#arrowhead)"
+            className="pointer-events-none"
           />
         );
       });
@@ -417,26 +423,26 @@ export default function FamilyTree() {
         const y = centerY;
 
         memberNodes.push(
-          <g
-            key={sibling.id}
-            transform={`translate(${x},${y})`}
-            className="cursor-pointer"
-            onClick={() => setSelectedMember(sibling)}
-          >
-            <circle
-              r={nodeRadius}
-              fill="hsl(var(--secondary))"
-              className="stroke-2 stroke-white"
-            />
-            <text
-              textAnchor="middle"
-              dy=".3em"
-              fill="hsl(var(--secondary-foreground))"
-              className="text-sm font-medium"
+          <Link href={`/profile/${sibling.id}`} key={sibling.id}>
+            <g
+              transform={`translate(${x},${y})`}
+              className="cursor-pointer"
             >
-              {sibling.displayName || sibling.username}
-            </text>
-          </g>
+              <circle
+                r={nodeRadius}
+                fill="hsl(var(--secondary))"
+                className="stroke-2 stroke-white"
+              />
+              <text
+                textAnchor="middle"
+                dy=".3em"
+                fill="hsl(var(--secondary-foreground))"
+                className="text-sm font-medium pointer-events-none"
+              >
+                {sibling.displayName || sibling.username}
+              </text>
+            </g>
+          </Link>
         );
 
         relationLines.push(
@@ -449,15 +455,16 @@ export default function FamilyTree() {
             stroke="hsl(var(--border))"
             strokeWidth="2"
             markerEnd="url(#arrowhead)"
+            className="pointer-events-none"
           />
         );
       });
     }
 
     return (
-      <svg 
-        width={treeWidth} 
-        height={treeHeight} 
+      <svg
+        width={treeWidth}
+        height={treeHeight}
         className="max-w-full cursor-move"
         ref={svgRef}
         onMouseDown={handleMouseDown}
