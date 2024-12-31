@@ -631,6 +631,63 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Add remove media from album endpoint
+  app.delete("/api/albums/:albumId/media/:mediaId", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const { albumId, mediaId } = req.params;
+
+    try {
+      // Check if user has permission to remove media from this album
+      const [album] = await db
+        .select()
+        .from(albums)
+        .where(eq(albums.id, parseInt(albumId)))
+        .limit(1);
+
+      if (!album) {
+        return res.status(404).send("Album not found");
+      }
+
+      // Check if user is album creator or has edit permissions
+      const [member] = album.createdBy === req.user.id
+        ? [true]
+        : await db
+            .select()
+            .from(albumMembers)
+            .where(
+              and(
+                eq(albumMembers.albumId, parseInt(albumId)),
+                eq(albumMembers.userId, req.user.id),
+                eq(albumMembers.canEdit, true)
+              )
+            )
+            .limit(1);
+
+      if (!member) {
+        return res.status(403).send("Not authorized to remove media from this album");
+      }
+
+      // Remove media from album by setting albumId to null
+      await db
+        .update(mediaItems)
+        .set({ albumId: null })
+        .where(
+          and(
+            eq(mediaItems.id, parseInt(mediaId)),
+            eq(mediaItems.albumId, parseInt(albumId))
+          )
+        );
+
+      res.json({ message: "Media removed from album successfully" });
+    } catch (error) {
+      console.error('Error removing media from album:', error);
+      res.status(500).send("Error removing media from album");
+    }
+  });
+
   // Add delete album endpoint
   app.delete("/api/albums/:albumId", async (req, res) => {
     if (!req.isAuthenticated()) {

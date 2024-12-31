@@ -1,7 +1,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Link2, Trash2, UserPlus, FolderPlus } from "lucide-react";
+import { Link2, Trash2, UserPlus, FolderPlus, X } from "lucide-react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import type { MediaItem } from "@db/schema";
@@ -40,7 +40,6 @@ export function MediaDialog({ media, open, onOpenChange }: MediaDialogProps) {
       return response.json();
     },
     onSuccess: () => {
-      // Invalidate all queries that might contain the deleted media
       queryClient.invalidateQueries({ queryKey: ['/api/media'] });
       queryClient.invalidateQueries({ queryKey: ['/api/media/tagged'] });
       onOpenChange(false);
@@ -90,6 +89,36 @@ export function MediaDialog({ media, open, onOpenChange }: MediaDialogProps) {
     },
   });
 
+  const removeFromAlbumMutation = useMutation({
+    mutationFn: async ({ albumId, mediaId }: { albumId: number; mediaId: number }) => {
+      const response = await fetch(`/api/albums/${albumId}/media/${mediaId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/media"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/albums"] });
+      toast({
+        title: "Success",
+        description: "Media removed from album successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleDelete = () => {
     if (window.confirm('Are you sure you want to delete this media item?')) {
       deleteMutation.mutate(media!.id);
@@ -104,6 +133,25 @@ export function MediaDialog({ media, open, onOpenChange }: MediaDialogProps) {
       mediaId: media.id,
     });
   };
+
+  const handleRemoveFromAlbum = (albumId: number) => {
+    if (!media) return;
+
+    if (window.confirm('Are you sure you want to remove this media from the album?')) {
+      removeFromAlbumMutation.mutate({
+        albumId,
+        mediaId: media.id,
+      });
+    }
+  };
+
+  // Get the list of albums this media is not in yet
+  const availableAlbums = albums.filter(album => 
+    media?.albumId !== album.id
+  );
+
+  // Get the current album if media is in one
+  const currentAlbum = albums.find(album => album.id === media?.albumId);
 
   if (!media) return null;
 
@@ -192,6 +240,26 @@ export function MediaDialog({ media, open, onOpenChange }: MediaDialogProps) {
               {media.type === "post" && media.content && (
                 <p className="mt-4 whitespace-pre-wrap">{media.content}</p>
               )}
+
+              {/* Current Album Section */}
+              {currentAlbum && (
+                <div className="mt-4 p-3 bg-muted rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm">
+                      <span className="text-muted-foreground">Current Album: </span>
+                      <span className="font-medium">{currentAlbum.name}</span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleRemoveFromAlbum(currentAlbum.id)}
+                    >
+                      <X className="h-4 w-4 mr-1" />
+                      Remove
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -235,7 +303,7 @@ export function MediaDialog({ media, open, onOpenChange }: MediaDialogProps) {
                   <SelectValue placeholder="Select album" />
                 </SelectTrigger>
                 <SelectContent>
-                  {albums.map((album) => (
+                  {availableAlbums.map((album) => (
                     <SelectItem key={album.id} value={album.id.toString()}>
                       {album.name}
                     </SelectItem>
