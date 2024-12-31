@@ -190,9 +190,11 @@ export default function FamilyTree() {
   }, [] as FamilyMember[]);
 
   // Calculate tree layout
-  const treeWidth = 1000;
-  const treeHeight = 600;
+  const treeWidth = 1200; // Increased width to accommodate siblings and spouse
+  const treeHeight = 800; // Increased height to accommodate parents and children
   const nodeRadius = 40;
+  const verticalSpacing = 150; // Spacing between levels (parent/child)
+  const horizontalSpacing = 200; // Spacing between siblings/spouse
 
   const renderTreeSvg = () => {
     const centerX = treeWidth / 2;
@@ -217,20 +219,43 @@ export default function FamilyTree() {
       </g>
     );
 
-    // Position family members in a circle around the user
-    const memberNodes = familyMembers
-      .filter((m) => m.id !== user.id)
-      .map((member, i, arr) => {
-        const angle = (i * 2 * Math.PI) / (arr.length || 1);
-        const x = centerX + Math.cos(angle) * 200;
-        const y = centerY + Math.sin(angle) * 200;
+    // Group family members by their relationship to the user
+    const familyGroups = relations.reduce((acc, relation) => {
+      const isFromUser = relation.fromUserId === user.id;
+      const member = isFromUser ? relation.toUser : relation.fromUser;
+      const relationType = isFromUser ? relation.relationType : {
+        parent: 'child',
+        child: 'parent',
+        spouse: 'spouse',
+        sibling: 'sibling'
+      }[relation.relationType];
 
-        return (
+      if (!acc[relationType]) {
+        acc[relationType] = [];
+      }
+      if (!acc[relationType].some(m => m.id === member.id)) {
+        acc[relationType].push(member);
+      }
+      return acc;
+    }, {} as Record<string, FamilyMember[]>);
+
+    // Calculate positions for each group
+    const memberNodes: JSX.Element[] = [];
+    const relationLines: JSX.Element[] = [];
+
+    // Position parents above
+    if (familyGroups.parent) {
+      const parentWidth = horizontalSpacing * (familyGroups.parent.length - 1);
+      familyGroups.parent.forEach((parent, i) => {
+        const x = centerX - parentWidth / 2 + i * horizontalSpacing;
+        const y = centerY - verticalSpacing;
+
+        memberNodes.push(
           <g
-            key={member.id}
+            key={parent.id}
             transform={`translate(${x},${y})`}
             className="cursor-pointer"
-            onClick={() => setSelectedMember(member)}
+            onClick={() => setSelectedMember(parent)}
           >
             <circle
               r={nodeRadius}
@@ -243,55 +268,158 @@ export default function FamilyTree() {
               fill="hsl(var(--secondary-foreground))"
               className="text-sm font-medium"
             >
-              {member.displayName || member.username}
+              {parent.displayName || parent.username}
             </text>
           </g>
         );
+
+        relationLines.push(
+          <line
+            key={`line-parent-${parent.id}`}
+            x1={x}
+            y1={y + nodeRadius}
+            x2={centerX}
+            y2={centerY - nodeRadius}
+            stroke="hsl(var(--border))"
+            strokeWidth="2"
+            markerEnd="url(#arrowhead)"
+          />
+        );
       });
+    }
 
-    // Draw relations
-    const relationLines = relations.map((relation) => {
-      const fromNode = familyMembers.find((m) => m.id === relation.fromUserId);
-      const toNode = familyMembers.find((m) => m.id === relation.toUserId);
+    // Position children below
+    if (familyGroups.child) {
+      const childWidth = horizontalSpacing * (familyGroups.child.length - 1);
+      familyGroups.child.forEach((child, i) => {
+        const x = centerX - childWidth / 2 + i * horizontalSpacing;
+        const y = centerY + verticalSpacing;
 
-      if (!fromNode || !toNode) return null;
+        memberNodes.push(
+          <g
+            key={child.id}
+            transform={`translate(${x},${y})`}
+            className="cursor-pointer"
+            onClick={() => setSelectedMember(child)}
+          >
+            <circle
+              r={nodeRadius}
+              fill="hsl(var(--secondary))"
+              className="stroke-2 stroke-white"
+            />
+            <text
+              textAnchor="middle"
+              dy=".3em"
+              fill="hsl(var(--secondary-foreground))"
+              className="text-sm font-medium"
+            >
+              {child.displayName || child.username}
+            </text>
+          </g>
+        );
 
-      // Calculate positions based on the same logic as above
-      const fromIndex = familyMembers.findIndex((m) => m.id === fromNode.id);
-      const toIndex = familyMembers.findIndex((m) => m.id === toNode.id);
-      const fromAngle = fromNode.id === user.id
-        ? 0
-        : ((fromIndex - 1) * 2 * Math.PI) / (familyMembers.length - 1);
-      const toAngle = toNode.id === user.id
-        ? 0
-        : ((toIndex - 1) * 2 * Math.PI) / (familyMembers.length - 1);
+        relationLines.push(
+          <line
+            key={`line-child-${child.id}`}
+            x1={centerX}
+            y1={centerY + nodeRadius}
+            x2={x}
+            y2={y - nodeRadius}
+            stroke="hsl(var(--border))"
+            strokeWidth="2"
+            markerEnd="url(#arrowhead)"
+          />
+        );
+      });
+    }
 
-      const fromX = fromNode.id === user.id
-        ? centerX
-        : centerX + Math.cos(fromAngle) * 200;
-      const fromY = fromNode.id === user.id
-        ? centerY
-        : centerY + Math.sin(fromAngle) * 200;
-      const toX = toNode.id === user.id
-        ? centerX
-        : centerX + Math.cos(toAngle) * 200;
-      const toY = toNode.id === user.id
-        ? centerY
-        : centerY + Math.sin(toAngle) * 200;
+    // Position spouse to the left
+    if (familyGroups.spouse) {
+      familyGroups.spouse.forEach((spouse, i) => {
+        const x = centerX - horizontalSpacing;
+        const y = centerY;
 
-      return (
-        <line
-          key={relation.id}
-          x1={fromX}
-          y1={fromY}
-          x2={toX}
-          y2={toY}
-          stroke="hsl(var(--border))"
-          strokeWidth="2"
-          markerEnd="url(#arrowhead)"
-        />
-      );
-    });
+        memberNodes.push(
+          <g
+            key={spouse.id}
+            transform={`translate(${x},${y})`}
+            className="cursor-pointer"
+            onClick={() => setSelectedMember(spouse)}
+          >
+            <circle
+              r={nodeRadius}
+              fill="hsl(var(--secondary))"
+              className="stroke-2 stroke-white"
+            />
+            <text
+              textAnchor="middle"
+              dy=".3em"
+              fill="hsl(var(--secondary-foreground))"
+              className="text-sm font-medium"
+            >
+              {spouse.displayName || spouse.username}
+            </text>
+          </g>
+        );
+
+        relationLines.push(
+          <line
+            key={`line-spouse-${spouse.id}`}
+            x1={x + nodeRadius}
+            y1={y}
+            x2={centerX - nodeRadius}
+            y2={centerY}
+            stroke="hsl(var(--border))"
+            strokeWidth="2"
+            markerEnd="url(#arrowhead)"
+          />
+        );
+      });
+    }
+
+    // Position siblings to the right
+    if (familyGroups.sibling) {
+      familyGroups.sibling.forEach((sibling, i) => {
+        const x = centerX + horizontalSpacing;
+        const y = centerY;
+
+        memberNodes.push(
+          <g
+            key={sibling.id}
+            transform={`translate(${x},${y})`}
+            className="cursor-pointer"
+            onClick={() => setSelectedMember(sibling)}
+          >
+            <circle
+              r={nodeRadius}
+              fill="hsl(var(--secondary))"
+              className="stroke-2 stroke-white"
+            />
+            <text
+              textAnchor="middle"
+              dy=".3em"
+              fill="hsl(var(--secondary-foreground))"
+              className="text-sm font-medium"
+            >
+              {sibling.displayName || sibling.username}
+            </text>
+          </g>
+        );
+
+        relationLines.push(
+          <line
+            key={`line-sibling-${sibling.id}`}
+            x1={centerX + nodeRadius}
+            y1={centerY}
+            x2={x - nodeRadius}
+            y2={y}
+            stroke="hsl(var(--border))"
+            strokeWidth="2"
+            markerEnd="url(#arrowhead)"
+          />
+        );
+      });
+    }
 
     return (
       <svg width={treeWidth} height={treeHeight} className="max-w-full">
