@@ -90,16 +90,13 @@ export function UserProfileEditor() {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline">
-          {user?.dateOfBirth ? (
-            <>
-              {format(new Date(user.dateOfBirth), "PP")} (Age:{" "}
-              {calculateAge(new Date(user.dateOfBirth))})
-            </>
-          ) : (
-            "Set Birthday"
-          )}
-        </Button>
+        {user?.dateOfBirth ? (
+          <p className="text-muted-foreground">
+            {format(new Date(user.dateOfBirth), "MMMM d, yyyy")} (Age: {calculateAge(new Date(user.dateOfBirth))})
+          </p>
+        ) : (
+          <Button variant="outline">Set Birthday</Button>
+        )}
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
