@@ -56,7 +56,7 @@ interface MediaItem {
   type: string;
   url: string;
   description?: string | null;
-  websiteUrl?: string | null;
+  website_url?: string | null;  // Changed from websiteUrl to match database schema
   content?: string | null;
   createdAt: string;
   metadata?: { mimetype?: string };
@@ -205,9 +205,9 @@ export function MediaGallery({ albumId }: MediaGalleryProps) {
                 {item.content}
               </p>
             )}
-            {item.websiteUrl && (
+            {item.website_url && (
               <a
-                href={item.websiteUrl}
+                href={item.website_url}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
