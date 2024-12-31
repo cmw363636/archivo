@@ -402,54 +402,57 @@ export default function AlbumManager() {
       <Dialog 
         open={isViewOpen} 
         onOpenChange={(open) => {
-          setIsViewOpen(open);
-          if (!open) {
-            setSelectedAlbum(null);
-          }
-        }}
-      >
-        <DialogContent className="max-w-5xl h-[80vh]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              {selectedAlbum?.name}
-            </DialogTitle>
-            <DialogDescription>
-              {selectedAlbum?.description}
-            </DialogDescription>
-            {selectedAlbum && (
-              <div className="mt-4 space-y-4 border-t pt-4">
-                <h3 className="font-medium">Members</h3>
-                <div className="space-y-2">
-                  {/* Show album creator first */}
-                  <div className="flex items-center justify-between p-2 bg-muted rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <Users className="h-4 w-4" />
-                      <span>{getCreatorName(selectedAlbum.createdBy)} (Creator)</span>
-                    </div>
-                  </div>
-                  {/* Show other members */}
-                  {selectedAlbum.members.map((member) => (
-                    <div key={member.userId} className="flex items-center justify-between p-2 bg-muted rounded-lg">
-                      <div className="flex items-center gap-2">
-                        <Users className="h-4 w-4" />
-                        <span>{member.user.displayName || member.user.username}</span>
-                      </div>
-                      {member.canEdit && (
-                        <span className="text-sm text-muted-foreground">Can Edit</span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </DialogHeader>
-          <div className="flex-1 overflow-y-auto">
-            {selectedAlbum && (
-              <MediaGallery albumId={selectedAlbum.id} />
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
+           setIsViewOpen(open);
+           if (!open) {
+             setSelectedAlbum(null);
+           }
+         }}
+       >
+         <DialogContent className="max-w-5xl h-[80vh]">
+           <DialogHeader>
+             <DialogTitle className="flex items-center gap-2">
+               {selectedAlbum?.name}
+             </DialogTitle>
+             <DialogDescription>
+               {selectedAlbum?.description}
+             </DialogDescription>
+           </DialogHeader>
+           <div className="flex-1 overflow-y-auto space-y-6">
+             {/* Media Gallery Section */}
+             {selectedAlbum && (
+               <MediaGallery albumId={selectedAlbum.id} />
+             )}
+
+             {/* Members Section */}
+             {selectedAlbum && (
+               <div className="space-y-4 border-t pt-4">
+                 <h3 className="font-medium">Members</h3>
+                 <div className="space-y-2">
+                   {/* Show album creator first */}
+                   <div className="flex items-center justify-between p-2 bg-muted rounded-lg">
+                     <div className="flex items-center gap-2">
+                       <Users className="h-4 w-4" />
+                       <span>{getCreatorName(selectedAlbum.createdBy)} (Creator)</span>
+                     </div>
+                   </div>
+                   {/* Show other members */}
+                   {selectedAlbum.members.map((member) => (
+                     <div key={member.userId} className="flex items-center justify-between p-2 bg-muted rounded-lg">
+                       <div className="flex items-center gap-2">
+                         <Users className="h-4 w-4" />
+                         <span>{member.user.displayName || member.user.username}</span>
+                       </div>
+                       {member.canEdit && (
+                         <span className="text-sm text-muted-foreground">Can Edit</span>
+                       )}
+                     </div>
+                   ))}
+                 </div>
+               </div>
+             )}
+           </div>
+         </DialogContent>
+       </Dialog>
     </div>
   );
 }
