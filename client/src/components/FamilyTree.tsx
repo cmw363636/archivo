@@ -27,7 +27,27 @@ import { useUser } from "../hooks/use-user";
 import { useToast } from "@/hooks/use-toast";
 import { Trash2 } from "lucide-react";
 
-// ... keep existing types and constants ...
+type FamilyMember = {
+  id: number;
+  username: string;
+  displayName: string;
+};
+
+type FamilyRelation = {
+  id: number;
+  fromUserId: number;
+  toUserId: number;
+  relationType: 'parent' | 'child' | 'sibling' | 'spouse';
+  fromUser: FamilyMember;
+  toUser: FamilyMember;
+};
+
+const relationTypeMap = {
+  parent: 'child',
+  child: 'parent',
+  spouse: 'spouse',
+  sibling: 'sibling'
+} as const;
 
 export default function FamilyTree() {
   const { user } = useUser();
@@ -39,15 +59,194 @@ export default function FamilyTree() {
   const [selectedRelativeMemberId, setSelectedRelativeMemberId] = useState<string>("");
   const [relationType, setRelationType] = useState<string>("");
 
-  // ... keep existing state and hooks ...
+  // Add state for panning
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const svgRef = useRef<SVGSVGElement>(null);
+
+  const { data: relations = [], isLoading } = useQuery<FamilyRelation[]>({
+    queryKey: ["/api/family"],
+    enabled: !!user,
+  });
+
+  const { data: allUsers = [] } = useQuery<FamilyMember[]>({
+    queryKey: ["/api/users"],
+    enabled: !!user,
+  });
+
+  // Mouse event handlers for panning
+  const handleMouseDown = (event: React.MouseEvent) => {
+    if (event.button !== 0) return; // Only handle left click
+    setIsDragging(true);
+    setDragStart({
+      x: event.clientX - position.x,
+      y: event.clientY - position.y
+    });
+  };
+
+  const handleMouseMove = (event: React.MouseEvent) => {
+    if (!isDragging) return;
+    const newX = event.clientX - dragStart.x;
+    const newY = event.clientY - dragStart.y;
+    setPosition({ x: newX, y: newY });
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  const handleMouseLeave = () => {
+    setIsDragging(false);
+  };
 
   const handleNodeClick = (userId: number) => {
     setLocation(`/profile/${userId}`);
   };
 
+  const addRelationMutation = useMutation({
+    mutationFn: async (data: { toUserId: number; relationType: string }) => {
+      const response = await fetch("/api/family", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/family"] });
+      setIsAddingRelation(false);
+      setSelectedRelativeMemberId("");
+      setRelationType("");
+      toast({
+        title: "Success",
+        description: "Family relation added successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (relationId: number) => {
+      const response = await fetch(`/api/family/${relationId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/family"] });
+      toast({
+        title: "Success",
+        description: "Relationship deleted successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleDeleteRelation = async (relationId: number) => {
+    try {
+      await deleteMutation.mutateAsync(relationId);
+    } catch (error) {
+      // Error handling is done in the mutation
+    }
+  };
+
+  const handleAddRelation = () => {
+    if (!selectedRelativeMemberId) {
+      toast({
+        title: "Error",
+        description: "Please select a family member",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!relationType) {
+      toast({
+        title: "Error",
+        description: "Please select a relation type",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const memberId = parseInt(selectedRelativeMemberId);
+    if (isNaN(memberId)) {
+      toast({
+        title: "Error",
+        description: "Invalid family member selected",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    addRelationMutation.mutate({
+      toUserId: memberId,
+      relationType,
+    });
+  };
+
+  if (!user) {
+    return null;
+  }
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <div className="h-[400px] w-full bg-muted animate-pulse rounded-lg" />
+      </div>
+    );
+  }
+
+  // Calculate tree layout
+  const treeWidth = 1200;
+  const treeHeight = 800;
+  const nodeRadius = 40;
+  const verticalSpacing = 150;
+  const horizontalSpacing = 200;
+
   const renderTreeSvg = () => {
     const centerX = treeWidth / 2;
     const centerY = treeHeight / 2;
+
+    // Group family members by their relationship to the user
+    const familyGroups = relations.reduce((acc, relation) => {
+      const isFromUser = relation.fromUserId === user.id;
+      const member = isFromUser ? relation.toUser : relation.fromUser;
+      const type = isFromUser 
+        ? relation.relationType 
+        : relationTypeMap[relation.relationType as keyof typeof relationTypeMap];
+
+      if (!acc[type]) {
+        acc[type] = [];
+      }
+      if (!acc[type].some(m => m.id === member.id)) {
+        acc[type].push(member);
+      }
+      return acc;
+    }, {} as Record<string, FamilyMember[]>);
 
     // Position current user at center
     const userNode = (
@@ -76,8 +275,6 @@ export default function FamilyTree() {
         </text>
       </g>
     );
-
-    // ... keep existing familyGroups logic ...
 
     const memberNodes: JSX.Element[] = [];
     const relationLines: JSX.Element[] = [];
@@ -132,7 +329,7 @@ export default function FamilyTree() {
       });
     }
 
-    // Position children below with the same pattern
+    // Position children below
     if (familyGroups.child) {
       const childWidth = horizontalSpacing * (familyGroups.child.length - 1);
       familyGroups.child.forEach((child, i) => {
@@ -315,8 +512,6 @@ export default function FamilyTree() {
     );
   };
 
-  // ... keep existing return statement and dialogs ...
-
   return (
     <div className="space-y-4">
       <Card>
@@ -338,7 +533,7 @@ export default function FamilyTree() {
         </CardContent>
       </Card>
 
-      {/* Keep existing dialogs */}
+      {/* Member Details Dialog */}
       <Dialog
         open={selectedMember !== null}
         onOpenChange={(open) => !open && setSelectedMember(null)}
@@ -381,6 +576,7 @@ export default function FamilyTree() {
         </DialogContent>
       </Dialog>
 
+      {/* Add Relation Dialog */}
       <Dialog
         open={isAddingRelation}
         onOpenChange={(open) => {
@@ -410,7 +606,7 @@ export default function FamilyTree() {
                 </SelectTrigger>
                 <SelectContent>
                   {allUsers
-                    .filter((u) => u.id !== user.id)
+                    .filter((u) => u.id !== user?.id)
                     .map((user) => (
                       <SelectItem key={user.id} value={user.id.toString()}>
                         {user.displayName || user.username}
