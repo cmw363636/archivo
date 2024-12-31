@@ -533,6 +533,47 @@ export function registerRoutes(app: Express): Server {
     res.json(member);
   });
 
+  // Add member removal endpoint
+  app.delete("/api/albums/:albumId/members/:userId", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const { albumId, userId } = req.params;
+
+    try {
+      // Check if user has permission to remove members
+      const [album] = await db
+        .select()
+        .from(albums)
+        .where(eq(albums.id, parseInt(albumId)))
+        .limit(1);
+
+      if (!album) {
+        return res.status(404).send("Album not found");
+      }
+
+      if (album.createdBy !== req.user.id) {
+        return res.status(403).send("Not authorized to remove members from this album");
+      }
+
+      // Remove the member from the album
+      await db
+        .delete(albumMembers)
+        .where(
+          and(
+            eq(albumMembers.albumId, parseInt(albumId)),
+            eq(albumMembers.userId, parseInt(userId))
+          )
+        );
+
+      res.json({ message: "Member removed successfully" });
+    } catch (error) {
+      console.error('Error removing album member:', error);
+      res.status(500).send("Error removing album member");
+    }
+  });
+
   // Add media to album endpoint
   app.post("/api/albums/:albumId/media/:mediaId", async (req, res) => {
     if (!req.isAuthenticated()) {

@@ -32,27 +32,27 @@ import type { User } from "@db/schema";
 import { MediaGallery } from "./MediaGallery";
 
 interface Album {
+  id: number;
+  name: string;
+  description: string | null;
+  createdBy: number;
+  createdAt: string;
+  isShared: boolean;
+  mediaItems: Array<{
     id: number;
-    name: string;
-    description: string | null;
-    createdBy: number;
-    createdAt: string;
-    isShared: boolean;
-    mediaItems: Array<{
-      id: number;
-      title: string;
-      type: string;
-      url: string;
-    }>;
-    members: Array<{
-      userId: number;
-      canEdit: boolean;
-      user: {
-        username: string;
-        displayName: string;
-      };
-    }>;
-  }
+    title: string;
+    type: string;
+    url: string;
+  }>;
+  members: Array<{
+    userId: number;
+    canEdit: boolean;
+    user: {
+      username: string;
+      displayName: string;
+    };
+  }>;
+}
 
 type NewMemberData = {
   userId: number | null;
@@ -82,6 +82,35 @@ export default function AlbumManager() {
 
   const { data: users = [] } = useQuery<User[]>({
     queryKey: ["/api/users"],
+  });
+
+  const removeMemberMutation = useMutation({
+    mutationFn: async ({ albumId, userId }: { albumId: number; userId: number }) => {
+      const response = await fetch(`/api/albums/${albumId}/members/${userId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/albums"] });
+      toast({
+        title: "Success",
+        description: "Member removed successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
   });
 
   const createAlbumMutation = useMutation({
@@ -212,6 +241,12 @@ export default function AlbumManager() {
   const handleViewAlbum = (album: Album) => {
     setSelectedAlbum(album);
     setIsViewOpen(true);
+  };
+
+  const handleRemoveMember = (albumId: number, userId: number) => {
+    if (window.confirm("Are you sure you want to remove this member from the album?")) {
+      removeMemberMutation.mutate({ albumId, userId });
+    }
   };
 
   if (isLoading) {
@@ -399,60 +434,71 @@ export default function AlbumManager() {
       </Dialog>
 
       {/* View Album Dialog */}
-      <Dialog 
-        open={isViewOpen} 
+      <Dialog
+        open={isViewOpen}
         onOpenChange={(open) => {
-           setIsViewOpen(open);
-           if (!open) {
-             setSelectedAlbum(null);
-           }
-         }}
-       >
-         <DialogContent className="max-w-5xl h-[80vh]">
-           <DialogHeader>
-             <DialogTitle className="flex items-center gap-2">
-               {selectedAlbum?.name}
-             </DialogTitle>
-             <DialogDescription>
-               {selectedAlbum?.description}
-             </DialogDescription>
-           </DialogHeader>
-           <div className="flex-1 overflow-y-auto space-y-6">
-             {/* Media Gallery Section */}
-             {selectedAlbum && (
-               <MediaGallery albumId={selectedAlbum.id} />
-             )}
+          setIsViewOpen(open);
+          if (!open) {
+            setSelectedAlbum(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-5xl h-[80vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {selectedAlbum?.name}
+            </DialogTitle>
+            <DialogDescription>
+              {selectedAlbum?.description}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto space-y-6">
+            {/* Media Gallery Section */}
+            {selectedAlbum && (
+              <MediaGallery albumId={selectedAlbum.id} />
+            )}
 
-             {/* Members Section */}
-             {selectedAlbum && (
-               <div className="space-y-4 border-t pt-4">
-                 <h3 className="font-medium">Members</h3>
-                 <div className="space-y-2">
-                   {/* Show album creator first */}
-                   <div className="flex items-center justify-between p-2 bg-muted rounded-lg">
-                     <div className="flex items-center gap-2">
-                       <Users className="h-4 w-4" />
-                       <span>{getCreatorName(selectedAlbum.createdBy)} (Creator)</span>
-                     </div>
-                   </div>
-                   {/* Show other members */}
-                   {selectedAlbum.members.map((member) => (
-                     <div key={member.userId} className="flex items-center justify-between p-2 bg-muted rounded-lg">
-                       <div className="flex items-center gap-2">
-                         <Users className="h-4 w-4" />
-                         <span>{member.user.displayName || member.user.username}</span>
-                       </div>
-                       {member.canEdit && (
-                         <span className="text-sm text-muted-foreground">Can Edit</span>
-                       )}
-                     </div>
-                   ))}
-                 </div>
-               </div>
-             )}
-           </div>
-         </DialogContent>
-       </Dialog>
+            {/* Members Section */}
+            {selectedAlbum && (
+              <div className="space-y-4 border-t pt-4">
+                <h3 className="font-medium">Members</h3>
+                <div className="space-y-2">
+                  {/* Show album creator first */}
+                  <div className="flex items-center justify-between p-2 bg-muted rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <Users className="h-4 w-4" />
+                      <span>{getCreatorName(selectedAlbum.createdBy)} (Creator)</span>
+                    </div>
+                  </div>
+                  {/* Show other members */}
+                  {selectedAlbum.members.map((member) => (
+                    <div key={member.userId} className="flex items-center justify-between p-2 bg-muted rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <Users className="h-4 w-4" />
+                        <span>{member.user.displayName || member.user.username}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {member.canEdit && (
+                          <span className="text-sm text-muted-foreground">Can Edit</span>
+                        )}
+                        {selectedAlbum.createdBy === user?.id && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRemoveMember(selectedAlbum.id, member.userId)}
+                          >
+                            Remove
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
