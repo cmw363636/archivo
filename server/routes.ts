@@ -536,6 +536,42 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Add delete album endpoint
+  app.delete("/api/albums/:albumId", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const { albumId } = req.params;
+
+    try {
+      // Check if user has permission to delete this album
+      const [album] = await db
+        .select()
+        .from(albums)
+        .where(eq(albums.id, parseInt(albumId)))
+        .limit(1);
+
+      if (!album) {
+        return res.status(404).send("Album not found");
+      }
+
+      if (album.createdBy !== req.user.id) {
+        return res.status(403).send("Not authorized to delete this album");
+      }
+
+      // Delete the album
+      await db
+        .delete(albums)
+        .where(eq(albums.id, parseInt(albumId)));
+
+      res.json({ message: "Album deleted successfully" });
+    } catch (error) {
+      console.error('Error deleting album:', error);
+      res.status(500).send("Error deleting album");
+    }
+  });
+
   // Family relations endpoints
   app.get("/api/family", async (req, res) => {
     if (!req.isAuthenticated()) {

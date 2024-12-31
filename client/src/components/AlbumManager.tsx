@@ -27,7 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Users, Image, Eye } from "lucide-react";
+import { Plus, Users, Image, Eye, Trash2 } from "lucide-react";
 import type { User } from "@db/schema";
 import { MediaGallery } from "./MediaGallery";
 
@@ -156,6 +156,35 @@ export default function AlbumManager() {
     },
   });
 
+  const deleteAlbumMutation = useMutation({
+    mutationFn: async (albumId: number) => {
+      const response = await fetch(`/api/albums/${albumId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/albums"] });
+      toast({
+        title: "Success",
+        description: "Album deleted successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleCreateAlbum = (e: React.FormEvent) => {
     e.preventDefault();
     createAlbumMutation.mutate(newAlbumData);
@@ -174,6 +203,12 @@ export default function AlbumManager() {
     });
   };
 
+  const handleDeleteAlbum = (albumId: number) => {
+    if (window.confirm("Are you sure you want to delete this album?")) {
+      deleteAlbumMutation.mutate(albumId);
+    }
+  };
+
   const handleViewAlbum = (album: Album) => {
     setSelectedAlbum(album);
     setIsViewOpen(true);
@@ -187,6 +222,8 @@ export default function AlbumManager() {
     const creator = users.find(user => user.id === albumCreatorId);
     return creator?.displayName || creator?.username || 'Unknown User';
   };
+
+  const user = users.find(u => u.id === 1) //replace 1 with actual user id logic
 
   return (
     <div className="space-y-4">
@@ -243,6 +280,15 @@ export default function AlbumManager() {
                 <Eye className="h-4 w-4 mr-2" />
                 View
               </Button>
+              {album.createdBy === user?.id && (
+                <Button
+                  variant="destructive"
+                  size="icon"
+                  onClick={() => handleDeleteAlbum(album.id)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              )}
             </CardFooter>
           </Card>
         ))}
