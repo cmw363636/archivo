@@ -19,6 +19,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Loader2, Upload } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+
+interface Album {
+  id: number;
+  name: string;
+  createdBy: number;
+}
 
 export default function MediaUpload() {
   const { upload, isUploading } = useMedia();
@@ -29,6 +36,11 @@ export default function MediaUpload() {
   const [websiteUrl, setWebsiteUrl] = useState("");
   const [content, setContent] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const [selectedAlbumId, setSelectedAlbumId] = useState<string>("");
+
+  const { data: albums = [] } = useQuery<Album[]>({
+    queryKey: ["/api/albums"],
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,6 +49,9 @@ export default function MediaUpload() {
     formData.append("type", type);
     formData.append("title", title);
     formData.append("description", description);
+    if (selectedAlbumId) {
+      formData.append("albumId", selectedAlbumId);
+    }
 
     if (type === "post") {
       formData.append("websiteUrl", websiteUrl);
@@ -66,6 +81,7 @@ export default function MediaUpload() {
     setWebsiteUrl("");
     setContent("");
     setFile(null);
+    setSelectedAlbumId("");
   };
 
   return (
@@ -96,6 +112,26 @@ export default function MediaUpload() {
                 <SelectItem value="audio">Audio</SelectItem>
                 <SelectItem value="document">Document</SelectItem>
                 <SelectItem value="post">Post</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="album">Album (optional)</Label>
+            <Select
+              value={selectedAlbumId}
+              onValueChange={setSelectedAlbumId}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select album" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">No Album</SelectItem>
+                {albums.map((album) => (
+                  <SelectItem key={album.id} value={album.id.toString()}>
+                    {album.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

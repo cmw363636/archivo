@@ -48,8 +48,12 @@ interface MediaItem {
   metadata?: { mimetype?: string };
 }
 
-export default function MediaGallery() {
-  const { mediaItems, isLoading } = useMedia();
+interface MediaGalleryProps {
+  albumId?: number;
+}
+
+export function MediaGallery({ albumId }: MediaGalleryProps) {
+  const { mediaItems, isLoading } = useMedia(albumId);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [mediaErrors, setMediaErrors] = useState<Record<number, string>>({});
@@ -58,8 +62,7 @@ export default function MediaGallery() {
     const matchesSearch = item.title
       .toLowerCase()
       .includes(search.toLowerCase());
-    const matchesType =
-      typeFilter === "all" || item.type === typeFilter;
+    const matchesType = typeFilter === "all" || item.type === typeFilter;
     return matchesSearch && matchesType;
   });
 

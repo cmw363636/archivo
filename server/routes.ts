@@ -153,7 +153,7 @@ export function registerRoutes(app: Express): Server {
       return res.status(401).send("Not authenticated");
     }
 
-    const { type, title, description, websiteUrl, content } = req.body;
+    const { type, title, description, websiteUrl, content, albumId } = req.body;
 
     try {
       let url = '';
@@ -198,7 +198,8 @@ export function registerRoutes(app: Express): Server {
       const [item] = await db
         .insert(mediaItems)
         .values({
-          user_id: req.user.id,
+          userId: req.user.id,
+          albumId: albumId ? parseInt(albumId) : null,
           type,
           title,
           description,
@@ -227,8 +228,15 @@ export function registerRoutes(app: Express): Server {
     }
 
     try {
+      const albumId = req.query.albumId ? parseInt(req.query.albumId as string) : undefined;
+
       const items = await db.query.mediaItems.findMany({
-        where: eq(mediaItems.userId, req.user.id),
+        where: albumId 
+          ? and(
+              eq(mediaItems.userId, req.user.id),
+              eq(mediaItems.albumId, albumId)
+            )
+          : eq(mediaItems.userId, req.user.id),
         with: {
           tags: true,
         },

@@ -27,8 +27,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Users, Image } from "lucide-react";
+import { Plus, Users, Image, Eye } from "lucide-react";
 import type { User } from "@db/schema";
+import { MediaGallery } from "./MediaGallery";
 
 type Album = {
   id: number;
@@ -63,6 +64,7 @@ export default function AlbumManager() {
   const queryClient = useQueryClient();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
+  const [isViewOpen, setIsViewOpen] = useState(false);
   const [selectedAlbum, setSelectedAlbum] = useState<Album | null>(null);
   const [newAlbumData, setNewAlbumData] = useState({
     name: "",
@@ -172,6 +174,11 @@ export default function AlbumManager() {
     });
   };
 
+  const handleViewAlbum = (album: Album) => {
+    setSelectedAlbum(album);
+    setIsViewOpen(true);
+  };
+
   if (isLoading) {
     return <div>Loading albums...</div>;
   }
@@ -217,7 +224,7 @@ export default function AlbumManager() {
                 </div>
               </div>
             </CardContent>
-            <CardFooter>
+            <CardFooter className="flex gap-2">
               <Button
                 variant="outline"
                 className="w-full"
@@ -227,6 +234,14 @@ export default function AlbumManager() {
                 }}
               >
                 Add Member
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => handleViewAlbum(album)}
+              >
+                <Eye className="h-4 w-4 mr-2" />
+                View
               </Button>
             </CardFooter>
           </Card>
@@ -308,7 +323,6 @@ export default function AlbumManager() {
                   {users
                     .filter((user) => {
                       if (!selectedAlbum) return false;
-                      // Filter out creator and existing members
                       return (
                         user.id !== selectedAlbum.createdBy &&
                         !selectedAlbum.members?.some(
@@ -335,6 +349,31 @@ export default function AlbumManager() {
               Add Member
             </Button>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Album Dialog */}
+      <Dialog 
+        open={isViewOpen} 
+        onOpenChange={(open) => {
+          setIsViewOpen(open);
+          if (!open) {
+            setSelectedAlbum(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-5xl h-[80vh]">
+          <DialogHeader>
+            <DialogTitle>{selectedAlbum?.name}</DialogTitle>
+            <DialogDescription>
+              {selectedAlbum?.description}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto">
+            {selectedAlbum && (
+              <MediaGallery albumId={selectedAlbum.id} />
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </div>

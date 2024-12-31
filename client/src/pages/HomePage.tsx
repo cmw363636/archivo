@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useUser } from "../hooks/use-user";
-import MediaGallery from "../components/MediaGallery";
+import { MediaGallery } from "../components/MediaGallery";
 import FamilyTree from "../components/FamilyTree";
 import MediaUpload from "../components/MediaUpload";
 import AlbumManager from "../components/AlbumManager";
