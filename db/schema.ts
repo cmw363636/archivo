@@ -1,6 +1,7 @@
 import { pgTable, text, serial, integer, boolean, timestamp, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { relations } from "drizzle-orm";
+import { z } from "zod";
 
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
@@ -118,13 +119,13 @@ export const familyRelationsRelations = relations(familyRelations, ({ one }) => 
   }),
 }));
 
-// Schemas
-export const insertUserSchema = createInsertSchema(users);
-export const selectUserSchema = createSelectSchema(users);
-export const insertMediaItemSchema = createInsertSchema(mediaItems);
-export const selectMediaItemSchema = createSelectSchema(mediaItems);
-export const insertAlbumSchema = createInsertSchema(albums);
-export const selectAlbumSchema = createSelectSchema(albums);
+// Schemas with custom types
+export const insertUserSchema = createInsertSchema(users, {
+  dateOfBirth: z.string().optional().nullable()
+});
+export const selectUserSchema = createSelectSchema(users, {
+  dateOfBirth: z.string().optional().nullable()
+});
 
 // Types
 export type User = typeof users.$inferSelect;
