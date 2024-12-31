@@ -651,6 +651,31 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Add new profile update route
+  app.patch("/api/user/profile", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const { dateOfBirth } = req.body;
+
+    try {
+      // Update user profile
+      const [updatedUser] = await db
+        .update(users)
+        .set({
+          dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
+        })
+        .where(eq(users.id, req.user.id))
+        .returning();
+
+      res.json(updatedUser);
+    } catch (error) {
+      console.error('Error updating user profile:', error);
+      res.status(500).send("Error updating user profile");
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
