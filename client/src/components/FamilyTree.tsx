@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Link, useLocation } from "wouter";
+import { Link, useLocation, useNavigate } from "wouter";
 import {
   Card,
   CardContent,
@@ -53,7 +53,7 @@ export default function FamilyTree() {
   const { user } = useUser();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [, setLocation] = useLocation();
+  const [, navigate] = useLocation();
   const [selectedMember, setSelectedMember] = useState<FamilyMember | null>(null);
   const [isAddingRelation, setIsAddingRelation] = useState(false);
   const [selectedRelativeMemberId, setSelectedRelativeMemberId] = useState<string>("");
@@ -100,8 +100,12 @@ export default function FamilyTree() {
     setIsDragging(false);
   };
 
-  const handleNodeClick = (userId: number) => {
-    setLocation(`/profile/${userId}`);
+  const handleNodeClick = (event: React.MouseEvent, userId: number) => {
+    event.stopPropagation();
+    event.preventDefault();
+    if (!isDragging) {
+      navigate(`/profile/${userId}`);
+    }
   };
 
   const addRelationMutation = useMutation({
@@ -253,10 +257,7 @@ export default function FamilyTree() {
       <g 
         key={user.id} 
         transform={`translate(${centerX},${centerY})`}
-        onClick={(e) => {
-          e.stopPropagation();
-          handleNodeClick(user.id);
-        }}
+        onClick={(e) => handleNodeClick(e, user.id)}
         style={{ cursor: 'pointer' }}
       >
         <circle
@@ -290,10 +291,7 @@ export default function FamilyTree() {
           <g
             key={parent.id}
             transform={`translate(${x},${y})`}
-            onClick={(e) => {
-              e.stopPropagation();
-              handleNodeClick(parent.id);
-            }}
+            onClick={(e) => handleNodeClick(e, parent.id)}
             style={{ cursor: 'pointer' }}
           >
             <circle
@@ -340,10 +338,7 @@ export default function FamilyTree() {
           <g
             key={child.id}
             transform={`translate(${x},${y})`}
-            onClick={(e) => {
-              e.stopPropagation();
-              handleNodeClick(child.id);
-            }}
+            onClick={(e) => handleNodeClick(e, child.id)}
             style={{ cursor: 'pointer' }}
           >
             <circle
@@ -389,10 +384,7 @@ export default function FamilyTree() {
           <g
             key={spouse.id}
             transform={`translate(${x},${y})`}
-            onClick={(e) => {
-              e.stopPropagation();
-              handleNodeClick(spouse.id);
-            }}
+            onClick={(e) => handleNodeClick(e, spouse.id)}
             style={{ cursor: 'pointer' }}
           >
             <circle
@@ -438,10 +430,7 @@ export default function FamilyTree() {
           <g
             key={sibling.id}
             transform={`translate(${x},${y})`}
-            onClick={(e) => {
-              e.stopPropagation();
-              handleNodeClick(sibling.id);
-            }}
+            onClick={(e) => handleNodeClick(e, sibling.id)}
             style={{ cursor: 'pointer' }}
           >
             <circle
