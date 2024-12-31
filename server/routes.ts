@@ -346,6 +346,28 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Users endpoint (add before albums endpoints)
+  app.get("/api/users", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    try {
+      const usersList = await db
+        .select({
+          id: users.id,
+          username: users.username,
+          displayName: users.displayName,
+        })
+        .from(users);
+
+      res.json(usersList);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      res.status(500).send("Error fetching users");
+    }
+  });
+
   // Albums endpoints
   app.get("/api/albums", async (req, res) => {
     if (!req.isAuthenticated()) {
