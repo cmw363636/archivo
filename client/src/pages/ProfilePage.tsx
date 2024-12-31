@@ -28,6 +28,10 @@ export default function ProfilePage() {
           <CardContent>
             <div className="space-y-4">
               <div>
+                <h3 className="text-lg font-medium">Display Name</h3>
+                <p className="text-muted-foreground">{user.displayName}</p>
+              </div>
+              <div>
                 <h3 className="text-lg font-medium">Username</h3>
                 <p className="text-muted-foreground">{user.username}</p>
               </div>
