@@ -4,7 +4,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Card,
   CardContent,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -16,7 +15,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
   DialogContent,
@@ -25,49 +23,10 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import {
-  Image,
-  FileText,
-  Music,
-  Video,
-  Search,
-  Calendar,
-  AlertCircle,
-  ExternalLink,
-  Link as LinkIcon,
-  FolderPlus,
-  Tag,
-  UserPlus,
-} from "lucide-react";
-import { format } from "date-fns";
+import { Image, FileText, Music, Video, Search, Link as LinkIcon, FolderPlus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import TagUsers from "./TagUsers";
-
-enum MediaError {
-  MEDIA_ERR_ABORTED = 1,
-  MEDIA_ERR_NETWORK = 2,
-  MEDIA_ERR_DECODE = 3,
-  MEDIA_ERR_SRC_NOT_SUPPORTED = 4,
-}
-
-interface MediaItem {
-  id: number;
-  title: string;
-  type: string;
-  url: string;
-  description?: string | null;
-  website_url?: string | null;  // Changed from websiteUrl to match database schema
-  content?: string | null;
-  createdAt: string;
-  metadata?: { mimetype?: string };
-  tags?: Array<{
-    userId: number;
-    user: {
-      username: string;
-      displayName: string;
-    };
-  }>;
-}
+import { MediaDialog } from "./MediaDialog";
+import type { MediaItem } from "@db/schema";
 
 interface Album {
   id: number;
@@ -82,14 +41,12 @@ export function MediaGallery({ albumId }: MediaGalleryProps) {
   const { mediaItems, isLoading } = useMedia(albumId);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
-  const [mediaErrors, setMediaErrors] = useState<Record<number, string>>({});
+  const [selectedMedia, setSelectedMedia] = useState<MediaItem | null>(null);
   const [isAddToAlbumOpen, setIsAddToAlbumOpen] = useState(false);
   const [selectedMediaId, setSelectedMediaId] = useState<number | null>(null);
   const [selectedAlbumId, setSelectedAlbumId] = useState<string>("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [isTagUsersOpen, setIsTagUsersOpen] = useState(false);
-  const [selectedMediaForTags, setSelectedMediaForTags] = useState<number | null>(null);
 
   const { data: albums = [] } = useQuery<Album[]>({
     queryKey: ["/api/albums"],
@@ -160,137 +117,44 @@ export function MediaGallery({ albumId }: MediaGalleryProps) {
     }
   };
 
-  const handleMediaError = (error: Error, mediaType: string, element: HTMLMediaElement) => {
-    console.error(`${mediaType} playback error:`, {
-      error,
-      networkState: element.networkState,
-      readyState: element.readyState,
-      currentSrc: element.currentSrc,
-      error: element.error
-    });
-
-    let errorMessage = `Error playing ${mediaType}`;
-    if (element.error) {
-      switch (element.error.code) {
-        case MediaError.MEDIA_ERR_ABORTED:
-          errorMessage += ": Playback aborted";
-          break;
-        case MediaError.MEDIA_ERR_NETWORK:
-          errorMessage += ": Network error";
-          break;
-        case MediaError.MEDIA_ERR_DECODE:
-          errorMessage += ": Decoding error";
-          break;
-        case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED:
-          errorMessage += ": Format not supported";
-          break;
-        default:
-          errorMessage += `: ${element.error.message}`;
-      }
-    }
-
-    setMediaErrors(prev => ({
-      ...prev,
-      [element.dataset.itemId!]: errorMessage
-    }));
-  };
-
-  const renderMediaContent = (item: MediaItem) => {
+  const renderMediaPreview = (item: MediaItem) => {
     switch (item.type) {
-      case "post":
-        return (
-          <div className="w-full space-y-4">
-            {item.content && (
-              <p className="text-sm text-foreground whitespace-pre-wrap">
-                {item.content}
-              </p>
-            )}
-            {item.website_url && (
-              <a
-                href={item.website_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
-              >
-                <ExternalLink className="h-4 w-4" />
-                Visit Website
-              </a>
-            )}
-            {item.url && (
-              <img
-                src={item.url}
-                alt={item.title}
-                className="w-full h-48 object-cover rounded-md mt-2"
-              />
-            )}
-          </div>
-        );
       case "photo":
         return (
           <img
             src={item.url}
             alt={item.title}
             className="w-full h-48 object-cover rounded-md"
-            onError={(e) => {
-              const img = e.currentTarget;
-              handleMediaError(e as any as Error, "image", img as any);
-            }}
           />
         );
       case "video":
         return (
           <div className="w-full h-48 bg-muted rounded-md flex flex-col items-center justify-center p-4">
-            <video
-              data-item-id={item.id}
-              controls
-              className="w-full h-full rounded-md"
-              preload="metadata"
-              crossOrigin="anonymous"
-              playsInline
-              controlsList="nodownload"
-              onError={(e) => {
-                const video = e.currentTarget;
-                handleMediaError(e as any as Error, "video", video);
-              }}
-              onLoadStart={(e) => {
-                const video = e.currentTarget;
-                video.volume = 0.5;
-              }}
-            >
-              <source
-                src={item.url}
-                type={item.metadata?.mimetype || 'video/mp4'}
-              />
-              Your browser does not support the video element.
-            </video>
+            <Video className="h-8 w-8 mb-2" />
+            <span className="text-sm text-muted-foreground">Video</span>
           </div>
         );
       case "audio":
         return (
           <div className="w-full h-48 bg-muted rounded-md flex flex-col items-center justify-center p-4">
-            <Music className="h-8 w-8 mb-4" />
-            <audio
-              data-item-id={item.id}
-              controls
-              className="w-full max-w-md"
-              preload="metadata"
-              crossOrigin="anonymous"
-              controlsList="nodownload"
-              onError={(e) => {
-                const audio = e.currentTarget;
-                handleMediaError(e as any as Error, "audio", audio);
-              }}
-              onLoadStart={(e) => {
-                const audio = e.currentTarget;
-                audio.volume = 0.5;
-              }}
-            >
-              <source
-                src={item.url}
-                type={item.metadata?.mimetype || 'audio/mpeg'}
-              />
-              Your browser does not support the audio element.
-            </audio>
+            <Music className="h-8 w-8 mb-2" />
+            <span className="text-sm text-muted-foreground">Audio</span>
+          </div>
+        );
+      case "post":
+        if (item.url) {
+          return (
+            <img
+              src={item.url}
+              alt={item.title}
+              className="w-full h-48 object-cover rounded-md"
+            />
+          );
+        }
+        return (
+          <div className="w-full h-48 bg-muted rounded-md flex flex-col items-center justify-center p-4">
+            <LinkIcon className="h-8 w-8 mb-2" />
+            <span className="text-sm text-muted-foreground">Post</span>
           </div>
         );
       default:
@@ -308,10 +172,10 @@ export function MediaGallery({ albumId }: MediaGalleryProps) {
         {[...Array(6)].map((_, i) => (
           <Card key={i}>
             <CardHeader>
-              <Skeleton className="h-4 w-3/4" />
+              <div className="h-4 w-3/4 bg-muted animate-pulse rounded" />
             </CardHeader>
             <CardContent>
-              <Skeleton className="h-48 w-full" />
+              <div className="h-48 w-full bg-muted animate-pulse rounded" />
             </CardContent>
           </Card>
         ))}
@@ -331,10 +195,7 @@ export function MediaGallery({ albumId }: MediaGalleryProps) {
             className="pl-8"
           />
         </div>
-        <Select
-          value={typeFilter}
-          onValueChange={setTypeFilter}
-        >
+        <Select value={typeFilter} onValueChange={setTypeFilter}>
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Filter by type" />
           </SelectTrigger>
@@ -344,14 +205,13 @@ export function MediaGallery({ albumId }: MediaGalleryProps) {
             <SelectItem value="video">Videos</SelectItem>
             <SelectItem value="audio">Audio</SelectItem>
             <SelectItem value="post">Posts</SelectItem>
-            <SelectItem value="document">Documents</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredItems.map((item) => (
-          <Card key={item.id}>
+          <Card key={item.id} className="cursor-pointer hover:bg-accent/5 transition-colors" onClick={() => setSelectedMedia(item)}>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <MediaIcon type={item.type} />
@@ -359,38 +219,14 @@ export function MediaGallery({ albumId }: MediaGalleryProps) {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {renderMediaContent(item)}
-              {mediaErrors[item.id] && (
-                <div className="mt-2 p-2 bg-destructive/10 text-destructive rounded-md flex items-center gap-2 text-sm">
-                  <AlertCircle className="h-4 w-4" />
-                  {mediaErrors[item.id]}
-                </div>
-              )}
-              {item.description && item.type !== 'post' && (
-                <p className="mt-2 text-sm text-muted-foreground">
-                  {item.description}
-                </p>
-              )}
-            </CardContent>
-            <CardFooter className="flex justify-between items-center">
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                  <Calendar className="h-4 w-4" />
-                  {format(new Date(item.createdAt), "PPP")}
-                </div>
-                {item.tags && item.tags.length > 0 && (
-                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                    <Tag className="h-4 w-4" />
-                    {item.tags.length} {item.tags.length === 1 ? 'person' : 'people'}
-                  </div>
-                )}
-              </div>
-              <div className="flex gap-2">
+              {renderMediaPreview(item)}
+              <div className="mt-4 flex justify-end">
                 {!albumId && (
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation();
                       setSelectedMediaId(item.id);
                       setIsAddToAlbumOpen(true);
                     }}
@@ -399,19 +235,8 @@ export function MediaGallery({ albumId }: MediaGalleryProps) {
                     Add to Album
                   </Button>
                 )}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setSelectedMediaForTags(item.id);
-                    setIsTagUsersOpen(true);
-                  }}
-                >
-                  <UserPlus className="h-4 w-4 mr-2" />
-                  Tag Users
-                </Button>
               </div>
-            </CardFooter>
+            </CardContent>
           </Card>
         ))}
       </div>
@@ -467,19 +292,12 @@ export function MediaGallery({ albumId }: MediaGalleryProps) {
         </DialogContent>
       </Dialog>
 
-      {/* Tag Users Dialog */}
-      {selectedMediaForTags && (
-        <TagUsers
-          mediaId={selectedMediaForTags}
-          open={isTagUsersOpen}
-          onOpenChange={(open) => {
-            setIsTagUsersOpen(open);
-            if (!open) {
-              setSelectedMediaForTags(null);
-            }
-          }}
-        />
-      )}
+      {/* Media Dialog */}
+      <MediaDialog
+        media={selectedMedia}
+        open={!!selectedMedia}
+        onOpenChange={(open) => !open && setSelectedMedia(null)}
+      />
     </div>
   );
 }
