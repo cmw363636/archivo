@@ -87,9 +87,13 @@ export default function MediaGallery() {
             <audio 
               controls 
               className="w-full max-w-md"
-              preload="metadata"
+              preload="auto"
+              controlsList="nodownload"
             >
-              <source src={item.url} type={item.metadata?.mimetype} />
+              <source 
+                src={item.url} 
+                type={item.metadata?.mimetype || 'audio/mpeg'} 
+              />
               Your browser does not support the audio element.
             </audio>
           </div>

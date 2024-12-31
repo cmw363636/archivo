@@ -8,6 +8,8 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import express from 'express';
+import mime from 'mime-types'; // Import mime-types library
+
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -30,8 +32,16 @@ export function registerRoutes(app: Express): Server {
   // Setup auth routes first
   setupAuth(app);
 
-  // Serve uploaded files
-  app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+  // Serve uploaded files with proper content-type headers
+  app.use('/uploads', (req, res, next) => {
+    const filePath = path.join(process.cwd(), 'uploads', path.basename(req.path));
+    res.sendFile(filePath, {
+      headers: {
+        'Content-Type': mime.lookup(filePath) || 'application/octet-stream',
+        'Accept-Ranges': 'bytes'
+      }
+    });
+  });
 
   // Get all users (for family relations)
   app.get("/api/users", async (req, res) => {
