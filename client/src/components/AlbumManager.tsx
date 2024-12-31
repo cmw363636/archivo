@@ -31,28 +31,28 @@ import { Plus, Users, Image, Eye } from "lucide-react";
 import type { User } from "@db/schema";
 import { MediaGallery } from "./MediaGallery";
 
-type Album = {
-  id: number;
-  name: string;
-  description: string | null;
-  createdBy: number;
-  createdAt: string;
-  isShared: boolean;
-  mediaItems?: Array<{
+interface Album {
     id: number;
-    title: string;
-    type: string;
-    url: string;
-  }>;
-  members?: Array<{
-    userId: number;
-    canEdit: boolean;
-    user?: {
-      username: string;
-      displayName: string;
-    };
-  }>;
-};
+    name: string;
+    description: string | null;
+    createdBy: number;
+    createdAt: string;
+    isShared: boolean;
+    mediaItems: Array<{
+      id: number;
+      title: string;
+      type: string;
+      url: string;
+    }>;
+    members: Array<{
+      userId: number;
+      canEdit: boolean;
+      user: {
+        username: string;
+        displayName: string;
+      };
+    }>;
+  }
 
 type NewMemberData = {
   userId: number | null;
@@ -216,11 +216,11 @@ export default function AlbumManager() {
               <div className="flex items-center gap-4 text-sm text-muted-foreground">
                 <div className="flex items-center gap-1">
                   <Image className="h-4 w-4" />
-                  {(album.mediaItems?.length || 0)} items
+                  {album.mediaItems.length} items
                 </div>
                 <div className="flex items-center gap-1">
                   <Users className="h-4 w-4" />
-                  {(album.members?.length || 0) + 1} members
+                  {album.members.length + 1} members
                 </div>
               </div>
             </CardContent>

@@ -375,32 +375,53 @@ export function registerRoutes(app: Express): Server {
     }
 
     try {
-      const userAlbums = await db
-        .select()
-        .from(albums)
-        .where(eq(albums.createdBy, req.user.id));
+      // Get user's created albums with media items and members count
+      const userAlbums = await db.query.albums.findMany({
+        where: eq(albums.createdBy, req.user.id),
+        with: {
+          mediaItems: true,
+          members: {
+            with: {
+              user: {
+                columns: {
+                  username: true,
+                  displayName: true
+                }
+              }
+            }
+          }
+        }
+      });
 
-      const sharedAlbums = await db
-        .select({
-          album: albums,
-          member: albumMembers,
-        })
-        .from(albums)
-        .innerJoin(
-          albumMembers,
-          and(
-            eq(albumMembers.albumId, albums.id),
-            eq(albumMembers.userId, req.user.id)
-          )
-        );
+      // Get shared albums with media items and members count
+      const sharedAlbums = await db.query.albumMembers.findMany({
+        where: eq(albumMembers.userId, req.user.id),
+        with: {
+          album: {
+            with: {
+              mediaItems: true,
+              members: {
+                with: {
+                  user: {
+                    columns: {
+                      username: true,
+                      displayName: true
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      });
 
-      // Combine user's albums and shared albums
-      const combinedAlbums = [
-        ...userAlbums,
-        ...sharedAlbums.map(({ album }) => album),
-      ];
+      // Format shared albums to match user albums structure
+      const formattedSharedAlbums = sharedAlbums.map(({ album }) => album);
 
-      res.json(combinedAlbums);
+      // Combine and return all albums
+      const allAlbums = [...userAlbums, ...formattedSharedAlbums];
+
+      res.json(allAlbums);
     } catch (error) {
       console.error('Error fetching albums:', error);
       res.status(500).send("Error fetching albums");
