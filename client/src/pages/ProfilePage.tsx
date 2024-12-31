@@ -17,8 +17,6 @@ import type { MediaItem } from "@db/schema";
 export default function ProfilePage() {
   const { user, logout } = useUser();
   const [view, setView] = useState<"profile" | "gallery" | "tree" | "albums">("profile");
-  const [uploadedExpanded, setUploadedExpanded] = useState(false);
-  const [taggedExpanded, setTaggedExpanded] = useState(false);
 
   // Query for media where user is tagged
   const { data: taggedMedia = [] } = useQuery<MediaItem[]>({
@@ -43,10 +41,6 @@ export default function ProfilePage() {
   if (!user) {
     return null;
   }
-
-  // Get the media items to display based on expanded state
-  const displayedUploadedMedia = uploadedExpanded ? uploadedMedia : uploadedMedia.slice(0, 5);
-  const displayedTaggedMedia = taggedExpanded ? taggedMedia : taggedMedia.slice(0, 5);
 
   return (
     <div className="min-h-screen bg-orange-50">
@@ -137,18 +131,17 @@ export default function ProfilePage() {
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Uploaded Media</CardTitle>
               {uploadedMedia.length > 5 && (
-                <Button
-                  variant="ghost"
-                  onClick={() => setUploadedExpanded(!uploadedExpanded)}
-                >
-                  {uploadedExpanded ? 'Show Less' : 'See All'}
-                </Button>
+                <Link href="/profile/uploaded">
+                  <Button variant="ghost">
+                    See All
+                  </Button>
+                </Link>
               )}
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {displayedUploadedMedia.length > 0 ? (
-                  displayedUploadedMedia.map((media) => (
+                {uploadedMedia.slice(0, 5).length > 0 ? (
+                  uploadedMedia.slice(0, 5).map((media) => (
                     <div key={media.id} className="flex items-center gap-4">
                       {media.type === 'photo' && (
                         <img 
@@ -182,18 +175,17 @@ export default function ProfilePage() {
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Tagged Media</CardTitle>
               {taggedMedia.length > 5 && (
-                <Button
-                  variant="ghost"
-                  onClick={() => setTaggedExpanded(!taggedExpanded)}
-                >
-                  {taggedExpanded ? 'Show Less' : 'See All'}
-                </Button>
+                <Link href="/profile/tagged">
+                  <Button variant="ghost">
+                    See All
+                  </Button>
+                </Link>
               )}
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {displayedTaggedMedia.length > 0 ? (
-                  displayedTaggedMedia.map((media) => (
+                {taggedMedia.slice(0, 5).length > 0 ? (
+                  taggedMedia.slice(0, 5).map((media) => (
                     <div key={media.id} className="flex items-center gap-4">
                       {media.type === 'photo' && (
                         <img 

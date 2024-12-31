@@ -4,6 +4,8 @@ import { useUser } from "./hooks/use-user";
 import AuthPage from "./pages/AuthPage";
 import HomePage from "./pages/HomePage";
 import ProfilePage from "./pages/ProfilePage";
+import UploadedMediaPage from "./pages/UploadedMediaPage";
+import TaggedMediaPage from "./pages/TaggedMediaPage";
 
 function App() {
   const { user, isLoading } = useUser();
@@ -26,6 +28,8 @@ function App() {
     <Switch>
       <Route path="/" component={HomePage} />
       <Route path="/profile" component={ProfilePage} />
+      <Route path="/profile/uploaded" component={UploadedMediaPage} />
+      <Route path="/profile/tagged" component={TaggedMediaPage} />
     </Switch>
   );
 }
