@@ -55,7 +55,7 @@ export function registerRoutes(app: Express): Server {
       const parts = range.replace(/bytes=/, "").split("-");
       const start = parseInt(parts[0], 10);
       const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
-      const chunkSize = end - start + 1;
+      const chunkSize = (end - start) + 1;
 
       console.log('Streaming file with range:', {
         path: filePath,
@@ -108,6 +108,87 @@ export function registerRoutes(app: Express): Server {
         res.status(500).send('Error streaming file');
       }
     });
+  });
+
+  // Media upload endpoint with improved error handling and logging
+  app.post("/api/media", upload.single('file'), async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    if (!req.file) {
+      return res.status(400).send("No file uploaded");
+    }
+
+    try {
+      // Log upload details
+      console.log('File upload:', {
+        originalName: req.file.originalname,
+        filename: req.file.filename,
+        mimetype: req.file.mimetype,
+        size: req.file.size,
+        path: req.file.path
+      });
+
+      // Verify file was written correctly
+      const stats = await fs.promises.stat(req.file.path);
+      console.log('File stats:', {
+        size: stats.size,
+        mode: stats.mode,
+        uid: stats.uid,
+        gid: stats.gid
+      });
+
+      // Ensure file permissions allow reading
+      await fs.promises.chmod(req.file.path, 0o644);
+
+      const { type, title, description, albumId } = req.body;
+      const url = `/uploads/${req.file.filename}`;
+
+      // If albumId is provided, check if user has permission to add to album
+      if (albumId) {
+        const [album] = await db
+          .select()
+          .from(albums)
+          .where(eq(albums.id, parseInt(albumId)))
+          .limit(1);
+
+        const [member] = await db
+          .select()
+          .from(albumMembers)
+          .where(and(
+            eq(albumMembers.albumId, parseInt(albumId)),
+            eq(albumMembers.userId, req.user.id)
+          ))
+          .limit(1);
+
+        if (!album || (!member && album.createdBy !== req.user.id)) {
+          return res.status(403).send("Not authorized to add media to this album");
+        }
+      }
+
+      const [item] = await db
+        .insert(mediaItems)
+        .values({
+          userId: req.user.id,
+          albumId: albumId ? parseInt(albumId) : null,
+          type,
+          title,
+          description,
+          url,
+          metadata: {
+            originalName: req.file.originalname,
+            size: req.file.size,
+            mimetype: req.file.mimetype
+          },
+        })
+        .returning();
+
+      res.json(item);
+    } catch (error) {
+      console.error('Error handling upload:', error);
+      res.status(500).send("Error processing uploaded file");
+    }
   });
 
   // Get all users (for family relations)
@@ -215,101 +296,6 @@ export function registerRoutes(app: Express): Server {
       .returning();
 
     res.json(member);
-  });
-
-  // Media endpoints
-  app.get("/api/media", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).send("Not authenticated");
-    }
-
-    const items = await db.query.mediaItems.findMany({
-      where: eq(mediaItems.userId, req.user.id),
-      with: {
-        tags: true,
-      },
-    });
-    res.json(items);
-  });
-
-  app.post("/api/media", upload.single('file'), async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).send("Not authenticated");
-    }
-
-    if (!req.file) {
-      return res.status(400).send("No file uploaded");
-    }
-
-    try {
-      // Log upload details
-      console.log('File upload:', {
-        originalName: req.file.originalname,
-        filename: req.file.filename,
-        mimetype: req.file.mimetype,
-        size: req.file.size,
-        path: req.file.path
-      });
-
-      // Verify file was written correctly
-      const stats = await fs.promises.stat(req.file.path);
-      console.log('File stats:', {
-        size: stats.size,
-        mode: stats.mode,
-        uid: stats.uid,
-        gid: stats.gid
-      });
-
-      // Ensure file permissions allow reading
-      await fs.promises.chmod(req.file.path, 0o644);
-
-      const { type, title, description, albumId } = req.body;
-      const url = `/uploads/${req.file.filename}`;
-
-      // If albumId is provided, check if user has permission to add to album
-      if (albumId) {
-        const [album] = await db
-          .select()
-          .from(albums)
-          .where(eq(albums.id, parseInt(albumId)))
-          .limit(1);
-
-        const [member] = await db
-          .select()
-          .from(albumMembers)
-          .where(and(
-            eq(albumMembers.albumId, parseInt(albumId)),
-            eq(albumMembers.userId, req.user.id)
-          ))
-          .limit(1);
-
-        if (!album || (!member && album.createdBy !== req.user.id)) {
-          return res.status(403).send("Not authorized to add media to this album");
-        }
-      }
-
-      const [item] = await db
-        .insert(mediaItems)
-        .values({
-          userId: req.user.id,
-          albumId: albumId ? parseInt(albumId) : null,
-          type,
-          title,
-          description,
-          url,
-          metadata: {
-            originalName: req.file.originalname,
-            size: req.file.size,
-            mimetype: req.file.mimetype
-          },
-        })
-        .returning();
-
-      res.json(item);
-    } catch (error) {
-      console.error('Error handling upload:', error);
-      res.status(500).send("Error processing uploaded file");
-    }
   });
 
   // Family relations endpoints

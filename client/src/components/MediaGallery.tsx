@@ -79,42 +79,42 @@ export default function MediaGallery() {
     );
   }
 
-  const renderMediaContent = (item: MediaItem) => {
-    const handleError = (error: Error, mediaType: string, element: HTMLMediaElement) => {
-      console.error(`${mediaType} playback error:`, {
-        error,
-        networkState: element.networkState,
-        readyState: element.readyState,
-        currentSrc: element.currentSrc,
-        error: element.error
-      });
+  const handleMediaError = (error: Error, mediaType: string, element: HTMLMediaElement) => {
+    console.error(`${mediaType} playback error:`, {
+      error,
+      networkState: element.networkState,
+      readyState: element.readyState,
+      currentSrc: element.currentSrc,
+      error: element.error
+    });
 
-      let errorMessage = `Error playing ${mediaType}`;
-      if (element.error) {
-        switch (element.error.code) {
-          case MediaError.MEDIA_ERR_ABORTED:
-            errorMessage += ": Playback aborted";
-            break;
-          case MediaError.MEDIA_ERR_NETWORK:
-            errorMessage += ": Network error";
-            break;
-          case MediaError.MEDIA_ERR_DECODE:
-            errorMessage += ": Decoding error";
-            break;
-          case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED:
-            errorMessage += ": Format not supported";
-            break;
-          default:
-            errorMessage += `: ${element.error.message}`;
-        }
+    let errorMessage = `Error playing ${mediaType}`;
+    if (element.error) {
+      switch (element.error.code) {
+        case MediaError.MEDIA_ERR_ABORTED:
+          errorMessage += ": Playback aborted";
+          break;
+        case MediaError.MEDIA_ERR_NETWORK:
+          errorMessage += ": Network error";
+          break;
+        case MediaError.MEDIA_ERR_DECODE:
+          errorMessage += ": Decoding error";
+          break;
+        case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED:
+          errorMessage += ": Format not supported";
+          break;
+        default:
+          errorMessage += `: ${element.error.message}`;
       }
+    }
 
-      setMediaErrors(prev => ({
-        ...prev,
-        [item.id]: errorMessage
-      }));
-    };
+    setMediaErrors(prev => ({
+      ...prev,
+      [element.dataset.itemId!]: errorMessage
+    }));
+  };
 
+  const renderMediaContent = (item: MediaItem) => {
     switch (item.type) {
       case "photo":
         return (
@@ -124,7 +124,7 @@ export default function MediaGallery() {
             className="w-full h-48 object-cover rounded-md"
             onError={(e) => {
               const img = e.currentTarget;
-              handleError(e as any as Error, "image", img as any);
+              handleMediaError(e as any as Error, "image", img as any);
             }}
           />
         );
@@ -132,6 +132,7 @@ export default function MediaGallery() {
         return (
           <div className="w-full h-48 bg-muted rounded-md flex flex-col items-center justify-center p-4">
             <video
+              data-item-id={item.id}
               controls
               className="w-full h-full rounded-md"
               preload="metadata"
@@ -140,7 +141,7 @@ export default function MediaGallery() {
               controlsList="nodownload"
               onError={(e) => {
                 const video = e.currentTarget;
-                handleError(e as any as Error, "video", video);
+                handleMediaError(e as any as Error, "video", video);
               }}
             >
               <source
@@ -156,6 +157,7 @@ export default function MediaGallery() {
           <div className="w-full h-48 bg-muted rounded-md flex flex-col items-center justify-center p-4">
             <Music className="h-8 w-8 mb-4" />
             <audio
+              data-item-id={item.id}
               controls
               className="w-full max-w-md"
               preload="metadata"
@@ -163,7 +165,7 @@ export default function MediaGallery() {
               controlsList="nodownload"
               onError={(e) => {
                 const audio = e.currentTarget;
-                handleError(e as any as Error, "audio", audio);
+                handleMediaError(e as any as Error, "audio", audio);
               }}
             >
               <source
