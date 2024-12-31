@@ -49,19 +49,34 @@ export function registerRoutes(app: Express): Server {
       contentType: mime.lookup(filePath) || 'application/octet-stream'
     });
 
-    res.sendFile(filePath, {
-      headers: {
+    // Get file stats for range requests
+    const stat = fs.statSync(filePath);
+    const fileSize = stat.size;
+    const range = req.headers.range;
+
+    if (range) {
+      const parts = range.replace(/bytes=/, "").split("-");
+      const start = parseInt(parts[0], 10);
+      const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+      const chunksize = (end - start) + 1;
+      const file = fs.createReadStream(filePath, { start, end });
+      const head = {
+        'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+        'Accept-Ranges': 'bytes',
+        'Content-Length': chunksize,
+        'Content-Type': mime.lookup(filePath) || 'application/octet-stream',
+      };
+      res.writeHead(206, head);
+      file.pipe(res);
+    } else {
+      const head = {
+        'Content-Length': fileSize,
         'Content-Type': mime.lookup(filePath) || 'application/octet-stream',
         'Accept-Ranges': 'bytes'
-      }
-    }, (err) => {
-      if (err) {
-        console.error('Error serving file:', err);
-        if (!res.headersSent) {
-          res.status(500).send('Error serving file');
-        }
-      }
-    });
+      };
+      res.writeHead(200, head);
+      fs.createReadStream(filePath).pipe(res);
+    }
   });
 
   // Get all users (for family relations)
