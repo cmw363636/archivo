@@ -4,7 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
 import type { MediaItem } from "@db/schema";
-import { Menu } from "lucide-react";
+import { Menu, Link2 } from "lucide-react";
+import { useState } from "react";
+import { MediaDialog } from "../components/MediaDialog";
 import {
   Sheet,
   SheetContent,
@@ -13,6 +15,7 @@ import {
 
 export default function UploadedMediaPage() {
   const { user, logout } = useUser();
+  const [selectedMedia, setSelectedMedia] = useState<MediaItem | null>(null);
 
   const { data: uploadedMedia = [] } = useQuery<MediaItem[]>({
     queryKey: ["/api/media"],
@@ -103,7 +106,11 @@ export default function UploadedMediaPage() {
             <div className="space-y-4">
               {uploadedMedia.length > 0 ? (
                 uploadedMedia.map((media) => (
-                  <div key={media.id} className="flex items-center gap-4">
+                  <div 
+                    key={media.id} 
+                    className="flex items-center gap-4 p-2 rounded-lg hover:bg-accent cursor-pointer"
+                    onClick={() => setSelectedMedia(media)}
+                  >
                     {media.type === 'photo' && (
                       <img 
                         src={media.url} 
@@ -116,11 +123,17 @@ export default function UploadedMediaPage() {
                         <span className="text-xs text-muted-foreground">Post</span>
                       </div>
                     )}
-                    <div>
+                    <div className="flex-1">
                       <h4 className="font-medium">{media.title}</h4>
                       <p className="text-sm text-muted-foreground">
                         {media.description}
                       </p>
+                      {media.type === 'post' && media.website_url && (
+                        <div className="mt-1 flex items-center gap-1 text-sm text-primary">
+                          <Link2 className="h-3 w-3" />
+                          <span>{media.website_url}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))
@@ -131,6 +144,12 @@ export default function UploadedMediaPage() {
           </CardContent>
         </Card>
       </main>
+
+      <MediaDialog
+        media={selectedMedia}
+        open={!!selectedMedia}
+        onOpenChange={(open) => !open && setSelectedMedia(null)}
+      />
     </div>
   );
 }

@@ -11,12 +11,14 @@ import {
   SheetContent,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { Menu } from "lucide-react";
+import { Menu, Link2 } from "lucide-react";
 import type { MediaItem } from "@db/schema";
+import { MediaDialog } from "../components/MediaDialog";
 
 export default function ProfilePage() {
   const { user, logout } = useUser();
   const [view, setView] = useState<"profile" | "gallery" | "tree" | "albums">("profile");
+  const [selectedMedia, setSelectedMedia] = useState<MediaItem | null>(null);
 
   // Query for media where user is tagged
   const { data: taggedMedia = [] } = useQuery<MediaItem[]>({
@@ -142,7 +144,11 @@ export default function ProfilePage() {
               <div className="space-y-4">
                 {uploadedMedia.slice(0, 5).length > 0 ? (
                   uploadedMedia.slice(0, 5).map((media) => (
-                    <div key={media.id} className="flex items-center gap-4">
+                    <div 
+                      key={media.id} 
+                      className="flex items-center gap-4 p-2 rounded-lg hover:bg-accent cursor-pointer"
+                      onClick={() => setSelectedMedia(media)}
+                    >
                       {media.type === 'photo' && (
                         <img 
                           src={media.url} 
@@ -155,11 +161,17 @@ export default function ProfilePage() {
                           <span className="text-xs text-muted-foreground">Post</span>
                         </div>
                       )}
-                      <div>
+                      <div className="flex-1">
                         <h4 className="font-medium">{media.title}</h4>
                         <p className="text-sm text-muted-foreground">
                           {media.description}
                         </p>
+                        {media.type === 'post' && media.website_url && (
+                          <div className="mt-1 flex items-center gap-1 text-sm text-primary">
+                            <Link2 className="h-3 w-3" />
+                            <span>{media.website_url}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))
@@ -186,7 +198,11 @@ export default function ProfilePage() {
               <div className="space-y-4">
                 {taggedMedia.slice(0, 5).length > 0 ? (
                   taggedMedia.slice(0, 5).map((media) => (
-                    <div key={media.id} className="flex items-center gap-4">
+                    <div 
+                      key={media.id} 
+                      className="flex items-center gap-4 p-2 rounded-lg hover:bg-accent cursor-pointer"
+                      onClick={() => setSelectedMedia(media)}
+                    >
                       {media.type === 'photo' && (
                         <img 
                           src={media.url} 
@@ -194,11 +210,17 @@ export default function ProfilePage() {
                           className="w-16 h-16 object-cover rounded-md"
                         />
                       )}
-                      <div>
+                      <div className="flex-1">
                         <h4 className="font-medium">{media.title}</h4>
                         <p className="text-sm text-muted-foreground">
                           {media.description}
                         </p>
+                        {media.type === 'post' && media.website_url && (
+                          <div className="mt-1 flex items-center gap-1 text-sm text-primary">
+                            <Link2 className="h-3 w-3" />
+                            <span>{media.website_url}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))
@@ -220,6 +242,12 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
       </main>
+
+      <MediaDialog
+        media={selectedMedia}
+        open={!!selectedMedia}
+        onOpenChange={(open) => !open && setSelectedMedia(null)}
+      />
     </div>
   );
 }
