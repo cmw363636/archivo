@@ -33,81 +33,105 @@ export function registerRoutes(app: Express): Server {
   // Setup auth routes first
   setupAuth(app);
 
-  // Media streaming handler
+  // Media streaming handler with improved error handling
   app.get('/uploads/:filename', (req, res) => {
-    const filename = req.params.filename;
-    const filePath = path.join(uploadDir, filename);
+    try {
+      const filename = req.params.filename;
+      const filePath = path.resolve(uploadDir, filename);
 
-    // Check if file exists
-    if (!fs.existsSync(filePath)) {
-      console.error(`File not found: ${filePath}`);
-      return res.status(404).send('File not found');
-    }
-
-    // Get file stats
-    const stat = fs.statSync(filePath);
-    const fileSize = stat.size;
-    const mimeType = mime.lookup(filePath) || 'application/octet-stream';
-
-    // Handle range requests
-    const range = req.headers.range;
-    if (range) {
-      const parts = range.replace(/bytes=/, "").split("-");
-      const start = parseInt(parts[0], 10);
-      const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
-      const chunkSize = (end - start) + 1;
-
-      console.log('Streaming file with range:', {
-        path: filePath,
-        contentType: mimeType,
-        range,
-        start,
-        end,
-        size: chunkSize
-      });
-
-      const stream = fs.createReadStream(filePath, { start, end });
-      const head = {
-        'Content-Range': `bytes ${start}-${end}/${fileSize}`,
-        'Accept-Ranges': 'bytes',
-        'Content-Length': chunkSize,
-        'Content-Type': mimeType,
-        'Cache-Control': 'no-cache',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, HEAD',
-        'Access-Control-Allow-Headers': 'Range, Accept-Ranges, Content-Range'
-      };
-
-      res.writeHead(206, head);
-      stream.pipe(res);
-    } else {
-      console.log('Streaming entire file:', {
-        path: filePath,
-        contentType: mimeType,
-        size: fileSize
-      });
-
-      const head = {
-        'Content-Length': fileSize,
-        'Content-Type': mimeType,
-        'Accept-Ranges': 'bytes',
-        'Cache-Control': 'no-cache',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, HEAD',
-        'Access-Control-Allow-Headers': 'Range, Accept-Ranges, Content-Range'
-      };
-
-      res.writeHead(200, head);
-      fs.createReadStream(filePath).pipe(res);
-    }
-
-    // Handle streaming errors
-    res.on('error', (error) => {
-      console.error('Error streaming file:', error);
-      if (!res.headersSent) {
-        res.status(500).send('Error streaming file');
+      // Security check: ensure the file path is within uploads directory
+      if (!filePath.startsWith(uploadDir)) {
+        console.error('Invalid file path access attempt:', filePath);
+        return res.status(403).send('Access denied');
       }
-    });
+
+      // Check if file exists
+      if (!fs.existsSync(filePath)) {
+        console.error(`File not found: ${filePath}`);
+        return res.status(404).send('File not found');
+      }
+
+      // Get file stats
+      const stat = fs.statSync(filePath);
+      const fileSize = stat.size;
+      const mimeType = mime.lookup(filePath) || 'application/octet-stream';
+
+      // Set common headers
+      const headers = {
+        'Content-Type': mimeType,
+        'Accept-Ranges': 'bytes',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
+        'Access-Control-Allow-Headers': 'Range, Accept-Ranges, Content-Range, Content-Type',
+        'Cross-Origin-Resource-Policy': 'cross-origin'
+      };
+
+      // Handle range requests (for video/audio streaming)
+      const range = req.headers.range;
+      if (range) {
+        const parts = range.replace(/bytes=/, "").split("-");
+        const start = parseInt(parts[0], 10);
+        const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+
+        if (isNaN(start) || isNaN(end) || start >= fileSize || end >= fileSize) {
+          res.status(416).send('Requested range not satisfiable');
+          return;
+        }
+
+        const chunkSize = (end - start) + 1;
+        console.log('Streaming file with range:', {
+          path: filePath,
+          contentType: mimeType,
+          range,
+          start,
+          end,
+          size: chunkSize
+        });
+
+        const stream = fs.createReadStream(filePath, { start, end });
+        res.writeHead(206, {
+          ...headers,
+          'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+          'Content-Length': chunkSize,
+        });
+
+        stream.pipe(res);
+        stream.on('error', (error) => {
+          console.error('Stream error:', error);
+          if (!res.headersSent) {
+            res.status(500).send('Error streaming file');
+          }
+        });
+      } else {
+        console.log('Streaming entire file:', {
+          path: filePath,
+          contentType: mimeType,
+          size: fileSize
+        });
+
+        res.writeHead(200, {
+          ...headers,
+          'Content-Length': fileSize,
+        });
+
+        const stream = fs.createReadStream(filePath);
+        stream.pipe(res);
+        stream.on('error', (error) => {
+          console.error('Stream error:', error);
+          if (!res.headersSent) {
+            res.status(500).send('Error streaming file');
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Unexpected error during file streaming:', error);
+      if (!res.headersSent) {
+        res.status(500).send('Internal server error');
+      }
+    }
   });
 
   // Media upload endpoint with improved error handling and logging

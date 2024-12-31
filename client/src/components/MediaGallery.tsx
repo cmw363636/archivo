@@ -143,6 +143,10 @@ export default function MediaGallery() {
                 const video = e.currentTarget;
                 handleMediaError(e as any as Error, "video", video);
               }}
+              onLoadStart={(e) => {
+                const video = e.currentTarget;
+                video.volume = 0.5; // Set initial volume
+              }}
             >
               <source
                 src={item.url}
@@ -166,6 +170,10 @@ export default function MediaGallery() {
               onError={(e) => {
                 const audio = e.currentTarget;
                 handleMediaError(e as any as Error, "audio", audio);
+              }}
+              onLoadStart={(e) => {
+                const audio = e.currentTarget;
+                audio.volume = 0.5; // Set initial volume
               }}
             >
               <source
