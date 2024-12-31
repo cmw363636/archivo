@@ -84,15 +84,25 @@ export default function MediaGallery() {
         return (
           <div className="w-full h-48 bg-muted rounded-md flex flex-col items-center justify-center p-4">
             <Music className="h-8 w-8 mb-4" />
-            <audio 
-              controls 
+            <audio
+              controls
               className="w-full max-w-md"
               preload="auto"
               controlsList="nodownload"
+              onError={(e) => {
+                console.error('Audio playback error:', e);
+                const audio = e.currentTarget;
+                if (audio.error) {
+                  console.error('Audio error details:', {
+                    code: audio.error.code,
+                    message: audio.error.message
+                  });
+                }
+              }}
             >
-              <source 
-                src={item.url} 
-                type={item.metadata?.mimetype || 'audio/mpeg'} 
+              <source
+                src={item.url}
+                type={item.metadata?.mimetype || 'audio/mpeg'}
               />
               Your browser does not support the audio element.
             </audio>

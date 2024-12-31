@@ -8,16 +8,17 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import express from 'express';
-import mime from 'mime-types'; // Import mime-types library
+import mime from 'mime-types';
 
+// Ensure uploads directory exists
+const uploadDir = path.join(process.cwd(), 'uploads');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const uploadDir = path.join(process.cwd(), 'uploads');
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
     cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
@@ -34,11 +35,31 @@ export function registerRoutes(app: Express): Server {
 
   // Serve uploaded files with proper content-type headers
   app.use('/uploads', (req, res, next) => {
-    const filePath = path.join(process.cwd(), 'uploads', path.basename(req.path));
+    const filePath = path.join(uploadDir, path.basename(req.path));
+
+    // Check if file exists
+    if (!fs.existsSync(filePath)) {
+      console.error(`File not found: ${filePath}`);
+      return res.status(404).send('File not found');
+    }
+
+    // Log file details for debugging
+    console.log('Serving file:', {
+      path: filePath,
+      contentType: mime.lookup(filePath) || 'application/octet-stream'
+    });
+
     res.sendFile(filePath, {
       headers: {
         'Content-Type': mime.lookup(filePath) || 'application/octet-stream',
         'Accept-Ranges': 'bytes'
+      }
+    }, (err) => {
+      if (err) {
+        console.error('Error serving file:', err);
+        if (!res.headersSent) {
+          res.status(500).send('Error serving file');
+        }
       }
     });
   });
