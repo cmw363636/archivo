@@ -26,17 +26,29 @@ export default function MediaUpload() {
   const [type, setType] = useState<string>("photo");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [websiteUrl, setWebsiteUrl] = useState("");
+  const [content, setContent] = useState("");
   const [file, setFile] = useState<File | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!file) return;
 
     const formData = new FormData();
     formData.append("type", type);
     formData.append("title", title);
     formData.append("description", description);
-    formData.append("file", file);
+
+    if (type === "post") {
+      formData.append("websiteUrl", websiteUrl);
+      formData.append("content", content);
+      // For posts, we don't require a file
+      if (file) {
+        formData.append("file", file);
+      }
+    } else {
+      if (!file) return;
+      formData.append("file", file);
+    }
 
     try {
       await upload(formData);
@@ -51,6 +63,8 @@ export default function MediaUpload() {
     setType("photo");
     setTitle("");
     setDescription("");
+    setWebsiteUrl("");
+    setContent("");
     setFile(null);
   };
 
@@ -81,6 +95,7 @@ export default function MediaUpload() {
                 <SelectItem value="video">Video</SelectItem>
                 <SelectItem value="audio">Audio</SelectItem>
                 <SelectItem value="document">Document</SelectItem>
+                <SelectItem value="post">Post</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -95,24 +110,62 @@ export default function MediaUpload() {
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
-            <Textarea
-              id="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
-          </div>
+          {type === "post" ? (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="content">Content</Label>
+                <Textarea
+                  id="content"
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  required
+                  className="min-h-[100px]"
+                />
+              </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="file">File</Label>
-            <Input
-              id="file"
-              type="file"
-              onChange={(e) => setFile(e.target.files?.[0] || null)}
-              required
-            />
-          </div>
+              <div className="space-y-2">
+                <Label htmlFor="websiteUrl">Website URL (optional)</Label>
+                <Input
+                  id="websiteUrl"
+                  type="url"
+                  value={websiteUrl}
+                  onChange={(e) => setWebsiteUrl(e.target.value)}
+                  placeholder="https://"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="file">Image (optional)</Label>
+                <Input
+                  id="file"
+                  type="file"
+                  onChange={(e) => setFile(e.target.files?.[0] || null)}
+                  accept="image/*"
+                />
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="description">Description</Label>
+                <Textarea
+                  id="description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="file">File</Label>
+                <Input
+                  id="file"
+                  type="file"
+                  onChange={(e) => setFile(e.target.files?.[0] || null)}
+                  required
+                />
+              </div>
+            </>
+          )}
 
           <Button type="submit" disabled={isUploading} className="w-full">
             {isUploading ? (
