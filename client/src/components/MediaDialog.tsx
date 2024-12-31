@@ -1,7 +1,9 @@
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Link2 } from "lucide-react";
+import { Link2, Trash2 } from "lucide-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 import type { MediaItem } from "@db/schema";
 
 interface MediaDialogProps {
@@ -11,11 +13,65 @@ interface MediaDialogProps {
 }
 
 export function MediaDialog({ media, open, onOpenChange }: MediaDialogProps) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  const deleteMutation = useMutation({
+    mutationFn: async (mediaId: number) => {
+      const response = await fetch(`/api/media/${mediaId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      // Invalidate all queries that might contain the deleted media
+      queryClient.invalidateQueries({ queryKey: ['/api/media'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/media/tagged'] });
+      onOpenChange(false);
+      toast({
+        title: "Success",
+        description: "Media deleted successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   if (!media) return null;
+
+  const handleDelete = () => {
+    if (window.confirm('Are you sure you want to delete this media item?')) {
+      deleteMutation.mutate(media.id);
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl">
+        <DialogHeader>
+          <DialogTitle className="flex justify-between items-center">
+            <span>{media.title}</span>
+            <Button
+              variant="destructive"
+              size="icon"
+              onClick={handleDelete}
+              disabled={deleteMutation.isPending}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </DialogTitle>
+        </DialogHeader>
         <Card>
           <CardContent className="p-6">
             {media.type === "photo" && (
@@ -47,7 +103,6 @@ export function MediaDialog({ media, open, onOpenChange }: MediaDialogProps) {
               />
             )}
             <div className="mt-4">
-              <h3 className="text-xl font-semibold">{media.title}</h3>
               {media.description && (
                 <p className="mt-2 text-muted-foreground">{media.description}</p>
               )}

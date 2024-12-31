@@ -257,6 +257,59 @@ export function registerRoutes(app: Express): Server {
   });
 
 
+  // Add media delete endpoint
+  app.delete("/api/media/:mediaId", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const { mediaId } = req.params;
+
+    try {
+      // Check if the media item exists and belongs to the user
+      const [mediaItem] = await db
+        .select()
+        .from(mediaItems)
+        .where(
+          and(
+            eq(mediaItems.id, parseInt(mediaId)),
+            eq(mediaItems.userId, req.user.id)
+          )
+        )
+        .limit(1);
+
+      if (!mediaItem) {
+        return res.status(404).send("Media item not found or unauthorized");
+      }
+
+      // Delete any associated tags first
+      await db
+        .delete(mediaTags)
+        .where(eq(mediaTags.mediaId, parseInt(mediaId)));
+
+      // Delete the media item
+      await db
+        .delete(mediaItems)
+        .where(eq(mediaItems.id, parseInt(mediaId)));
+
+      // If there's a file associated, delete it
+      if (mediaItem.url && mediaItem.url.startsWith('/uploads/')) {
+        const filePath = path.join(process.cwd(), mediaItem.url.slice(1));
+        try {
+          await fs.promises.unlink(filePath);
+        } catch (error) {
+          console.error('Error deleting file:', error);
+          // Continue even if file deletion fails
+        }
+      }
+
+      res.json({ message: "Media deleted successfully" });
+    } catch (error) {
+      console.error('Error deleting media:', error);
+      res.status(500).send("Error deleting media");
+    }
+  });
+
   // Get tags for a media item
   app.get("/api/media/:mediaId/tags", async (req, res) => {
     if (!req.isAuthenticated()) {
