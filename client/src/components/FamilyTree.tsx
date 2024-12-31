@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Card,
@@ -22,7 +22,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Skeleton } from "@/components/ui/skeleton";
 import { useUser } from "../hooks/use-user";
 import { useToast } from "@/hooks/use-toast";
 import { Trash2 } from "lucide-react";
@@ -37,10 +36,17 @@ type FamilyRelation = {
   id: number;
   fromUserId: number;
   toUserId: number;
-  relationType: string;
+  relationType: 'parent' | 'child' | 'sibling' | 'spouse';
   fromUser: FamilyMember;
   toUser: FamilyMember;
 };
+
+const relationTypeMap = {
+  parent: 'child',
+  child: 'parent',
+  spouse: 'spouse',
+  sibling: 'sibling'
+} as const;
 
 export default function FamilyTree() {
   const { user } = useUser();
@@ -51,6 +57,12 @@ export default function FamilyTree() {
   const [selectedRelativeMemberId, setSelectedRelativeMemberId] = useState<string>("");
   const [relationType, setRelationType] = useState<string>("");
 
+  // Add state for panning
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const svgRef = useRef<SVGSVGElement>(null);
+
   const { data: relations = [], isLoading } = useQuery<FamilyRelation[]>({
     queryKey: ["/api/family"],
     enabled: !!user,
@@ -60,6 +72,31 @@ export default function FamilyTree() {
     queryKey: ["/api/users"],
     enabled: !!user,
   });
+
+  // Add mouse event handlers for panning
+  const handleMouseDown = (event: React.MouseEvent) => {
+    if (event.button !== 0) return; // Only handle left click
+    setIsDragging(true);
+    setDragStart({
+      x: event.clientX - position.x,
+      y: event.clientY - position.y
+    });
+  };
+
+  const handleMouseMove = (event: React.MouseEvent) => {
+    if (!isDragging) return;
+    const newX = event.clientX - dragStart.x;
+    const newY = event.clientY - dragStart.y;
+    setPosition({ x: newX, y: newY });
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  const handleMouseLeave = () => {
+    setIsDragging(false);
+  };
 
   const addRelationMutation = useMutation({
     mutationFn: async (data: { toUserId: number; relationType: string }) => {
@@ -172,7 +209,7 @@ export default function FamilyTree() {
   if (isLoading) {
     return (
       <div className="space-y-4">
-        <Skeleton className="h-[400px] w-full" />
+        <div className="h-[400px] w-full bg-muted animate-pulse rounded-lg" />
       </div>
     );
   }
@@ -190,11 +227,11 @@ export default function FamilyTree() {
   }, [] as FamilyMember[]);
 
   // Calculate tree layout
-  const treeWidth = 1200; // Increased width to accommodate siblings and spouse
-  const treeHeight = 800; // Increased height to accommodate parents and children
+  const treeWidth = 1200;
+  const treeHeight = 800;
   const nodeRadius = 40;
-  const verticalSpacing = 150; // Spacing between levels (parent/child)
-  const horizontalSpacing = 200; // Spacing between siblings/spouse
+  const verticalSpacing = 150;
+  const horizontalSpacing = 200;
 
   const renderTreeSvg = () => {
     const centerX = treeWidth / 2;
@@ -223,23 +260,19 @@ export default function FamilyTree() {
     const familyGroups = relations.reduce((acc, relation) => {
       const isFromUser = relation.fromUserId === user.id;
       const member = isFromUser ? relation.toUser : relation.fromUser;
-      const relationType = isFromUser ? relation.relationType : {
-        parent: 'child',
-        child: 'parent',
-        spouse: 'spouse',
-        sibling: 'sibling'
-      }[relation.relationType];
+      const type = isFromUser 
+        ? relation.relationType 
+        : relationTypeMap[relation.relationType as keyof typeof relationTypeMap];
 
-      if (!acc[relationType]) {
-        acc[relationType] = [];
+      if (!acc[type]) {
+        acc[type] = [];
       }
-      if (!acc[relationType].some(m => m.id === member.id)) {
-        acc[relationType].push(member);
+      if (!acc[type].some(m => m.id === member.id)) {
+        acc[type].push(member);
       }
       return acc;
     }, {} as Record<string, FamilyMember[]>);
 
-    // Calculate positions for each group
     const memberNodes: JSX.Element[] = [];
     const relationLines: JSX.Element[] = [];
 
@@ -422,25 +455,36 @@ export default function FamilyTree() {
     }
 
     return (
-      <svg width={treeWidth} height={treeHeight} className="max-w-full">
-        <defs>
-          <marker
-            id="arrowhead"
-            markerWidth="10"
-            markerHeight="7"
-            refX="9"
-            refY="3.5"
-            orient="auto"
-          >
-            <polygon
-              points="0 0, 10 3.5, 0 7"
-              fill="hsl(var(--border))"
-            />
-          </marker>
-        </defs>
-        {relationLines}
-        {memberNodes}
-        {userNode}
+      <svg 
+        width={treeWidth} 
+        height={treeHeight} 
+        className="max-w-full cursor-move"
+        ref={svgRef}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseLeave}
+      >
+        <g transform={`translate(${position.x},${position.y})`}>
+          <defs>
+            <marker
+              id="arrowhead"
+              markerWidth="10"
+              markerHeight="7"
+              refX="9"
+              refY="3.5"
+              orient="auto"
+            >
+              <polygon
+                points="0 0, 10 3.5, 0 7"
+                fill="hsl(var(--border))"
+              />
+            </marker>
+          </defs>
+          {relationLines}
+          {memberNodes}
+          {userNode}
+        </g>
       </svg>
     );
   };
@@ -459,8 +503,10 @@ export default function FamilyTree() {
             Add Relation
           </Button>
         </CardHeader>
-        <CardContent className="flex justify-center">
-          {renderTreeSvg()}
+        <CardContent className="flex justify-center overflow-hidden">
+          <div className="relative w-full overflow-hidden border rounded-lg">
+            {renderTreeSvg()}
+          </div>
         </CardContent>
       </Card>
 
