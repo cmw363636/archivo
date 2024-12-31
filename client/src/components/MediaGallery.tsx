@@ -23,9 +23,10 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Image, FileText, Music, Video, Search, Link as LinkIcon, FolderPlus } from "lucide-react";
+import { Image, FileText, Music, Video, Search, Link as LinkIcon, FolderPlus, UserPlus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { MediaDialog } from "./MediaDialog";
+import TagUsers from "./TagUsers";
 import type { MediaItem } from "@db/schema";
 
 interface Album {
@@ -45,6 +46,7 @@ export function MediaGallery({ albumId }: MediaGalleryProps) {
   const [isAddToAlbumOpen, setIsAddToAlbumOpen] = useState(false);
   const [selectedMediaId, setSelectedMediaId] = useState<number | null>(null);
   const [selectedAlbumId, setSelectedAlbumId] = useState<string>("");
+  const [isTagModalOpen, setIsTagModalOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -211,7 +213,7 @@ export function MediaGallery({ albumId }: MediaGalleryProps) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredItems.map((item) => (
-          <Card key={item.id} className="cursor-pointer hover:bg-accent/5 transition-colors" onClick={() => setSelectedMedia(item)}>
+          <Card key={item.id} className="cursor-pointer hover:bg-accent/5 transition-colors" onClick={() => setSelectedMedia(item as MediaItem)}>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <MediaIcon type={item.type} />
@@ -220,20 +222,34 @@ export function MediaGallery({ albumId }: MediaGalleryProps) {
             </CardHeader>
             <CardContent>
               {renderMediaPreview(item)}
-              <div className="mt-4 flex justify-end">
+              <div className="mt-4 flex justify-end gap-2">
                 {!albumId && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedMediaId(item.id);
-                      setIsAddToAlbumOpen(true);
-                    }}
-                  >
-                    <FolderPlus className="h-4 w-4 mr-2" />
-                    Add to Album
-                  </Button>
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedMediaId(item.id);
+                        setIsTagModalOpen(true);
+                      }}
+                    >
+                      <UserPlus className="h-4 w-4 mr-2" />
+                      Tag Users
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedMediaId(item.id);
+                        setIsAddToAlbumOpen(true);
+                      }}
+                    >
+                      <FolderPlus className="h-4 w-4 mr-2" />
+                      Add to Album
+                    </Button>
+                  </>
                 )}
               </div>
             </CardContent>
@@ -247,7 +263,6 @@ export function MediaGallery({ albumId }: MediaGalleryProps) {
         </div>
       )}
 
-      {/* Add to Album Dialog */}
       <Dialog
         open={isAddToAlbumOpen}
         onOpenChange={(open) => {
@@ -292,7 +307,31 @@ export function MediaGallery({ albumId }: MediaGalleryProps) {
         </DialogContent>
       </Dialog>
 
-      {/* Media Dialog */}
+      <Dialog
+        open={isTagModalOpen}
+        onOpenChange={(open) => {
+          setIsTagModalOpen(open);
+          if (!open) {
+            setSelectedMediaId(null);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Tag Users</DialogTitle>
+            <DialogDescription>
+              Select users to tag in this media
+            </DialogDescription>
+          </DialogHeader>
+          {selectedMediaId && (
+            <TagUsers 
+              mediaId={selectedMediaId} 
+              onClose={() => setIsTagModalOpen(false)} 
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
       <MediaDialog
         media={selectedMedia}
         open={!!selectedMedia}

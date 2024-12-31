@@ -16,15 +16,14 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { User } from "@db/schema";
+import type { User } from "@db/schema";
 
 interface TagUsersProps {
   mediaId: number;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+  onClose?: () => void;
 }
 
-export default function TagUsers({ mediaId, open, onOpenChange }: TagUsersProps) {
+export default function TagUsers({ mediaId, onClose }: TagUsersProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [selectedUserId, setSelectedUserId] = useState<string>("");
@@ -61,6 +60,9 @@ export default function TagUsers({ mediaId, open, onOpenChange }: TagUsersProps)
         description: "User tagged successfully",
       });
       setSelectedUserId("");
+      if (onClose) {
+        onClose();
+      }
     },
     onError: (error: Error) => {
       toast({
@@ -111,69 +113,59 @@ export default function TagUsers({ mediaId, open, onOpenChange }: TagUsersProps)
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Tag Users</DialogTitle>
-          <DialogDescription>
-            Tag family members in this media item
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Select
-              value={selectedUserId}
-              onValueChange={setSelectedUserId}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select a user to tag" />
-              </SelectTrigger>
-              <SelectContent>
-                {users
-                  .filter(
-                    (user) =>
-                      !existingTags.some((tag) => tag.userId === user.id)
-                  )
-                  .map((user) => (
-                    <SelectItem key={user.id} value={user.id.toString()}>
-                      {user.displayName || user.username}
-                    </SelectItem>
-                  ))}
-              </SelectContent>
-            </Select>
-            <Button
-              className="w-full"
-              disabled={!selectedUserId}
-              onClick={handleTagUser}
-            >
-              Tag User
-            </Button>
-          </div>
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <Select
+          value={selectedUserId}
+          onValueChange={setSelectedUserId}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Select a user to tag" />
+          </SelectTrigger>
+          <SelectContent>
+            {users
+              .filter(
+                (user) =>
+                  !existingTags.some((tag) => tag.userId === user.id)
+              )
+              .map((user) => (
+                <SelectItem key={user.id} value={user.id.toString()}>
+                  {user.displayName || user.username}
+                </SelectItem>
+              ))}
+          </SelectContent>
+        </Select>
+        <Button
+          className="w-full"
+          disabled={!selectedUserId}
+          onClick={handleTagUser}
+        >
+          Tag User
+        </Button>
+      </div>
 
-          {existingTags.length > 0 && (
-            <div className="space-y-2">
-              <h4 className="font-medium">Tagged Users</h4>
-              <div className="space-y-2">
-                {existingTags.map((tag) => (
-                  <div
-                    key={tag.userId}
-                    className="flex items-center justify-between p-2 bg-muted rounded-lg"
-                  >
-                    <span>{tag.user.displayName || tag.user.username}</span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleRemoveTag(tag.userId)}
-                    >
-                      Remove
-                    </Button>
-                  </div>
-                ))}
+      {existingTags.length > 0 && (
+        <div className="space-y-2">
+          <h4 className="font-medium">Tagged Users</h4>
+          <div className="space-y-2">
+            {existingTags.map((tag) => (
+              <div
+                key={tag.userId}
+                className="flex items-center justify-between p-2 bg-muted rounded-lg"
+              >
+                <span>{tag.user.displayName || tag.user.username}</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleRemoveTag(tag.userId)}
+                >
+                  Remove
+                </Button>
               </div>
-            </div>
-          )}
+            ))}
+          </div>
         </div>
-      </DialogContent>
-    </Dialog>
+      )}
+    </div>
   );
 }
