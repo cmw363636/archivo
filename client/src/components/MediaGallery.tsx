@@ -24,6 +24,8 @@ import {
   Search,
   Calendar,
   AlertCircle,
+  ExternalLink,
+  Link as LinkIcon,
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -32,6 +34,18 @@ enum MediaError {
   MEDIA_ERR_NETWORK = 2,
   MEDIA_ERR_DECODE = 3,
   MEDIA_ERR_SRC_NOT_SUPPORTED = 4,
+}
+
+interface MediaItem {
+  id: number;
+  title: string;
+  type: string;
+  url: string;
+  description?: string | null;
+  websiteUrl?: string | null;
+  content?: string | null;
+  createdAt: string;
+  metadata?: { mimetype?: string };
 }
 
 export default function MediaGallery() {
@@ -57,6 +71,8 @@ export default function MediaGallery() {
         return <Video className="h-5 w-5" />;
       case "audio":
         return <Music className="h-5 w-5" />;
+      case "post":
+        return <LinkIcon className="h-5 w-5" />;
       default:
         return <FileText className="h-5 w-5" />;
     }
@@ -116,6 +132,27 @@ export default function MediaGallery() {
 
   const renderMediaContent = (item: MediaItem) => {
     switch (item.type) {
+      case "post":
+        return (
+          <div className="w-full space-y-4">
+            {item.content && (
+              <p className="text-sm text-foreground whitespace-pre-wrap">
+                {item.content}
+              </p>
+            )}
+            {item.websiteUrl && (
+              <a
+                href={item.websiteUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
+              >
+                <ExternalLink className="h-4 w-4" />
+                Visit Website
+              </a>
+            )}
+          </div>
+        );
       case "photo":
         return (
           <img
@@ -145,7 +182,7 @@ export default function MediaGallery() {
               }}
               onLoadStart={(e) => {
                 const video = e.currentTarget;
-                video.volume = 0.5; // Set initial volume
+                video.volume = 0.5;
               }}
             >
               <source
@@ -173,7 +210,7 @@ export default function MediaGallery() {
               }}
               onLoadStart={(e) => {
                 const audio = e.currentTarget;
-                audio.volume = 0.5; // Set initial volume
+                audio.volume = 0.5;
               }}
             >
               <source
@@ -217,6 +254,7 @@ export default function MediaGallery() {
             <SelectItem value="photo">Photos</SelectItem>
             <SelectItem value="video">Videos</SelectItem>
             <SelectItem value="audio">Audio</SelectItem>
+            <SelectItem value="post">Posts</SelectItem>
             <SelectItem value="document">Documents</SelectItem>
           </SelectContent>
         </Select>
@@ -239,7 +277,7 @@ export default function MediaGallery() {
                   {mediaErrors[item.id]}
                 </div>
               )}
-              {item.description && (
+              {item.description && item.type !== 'post' && (
                 <p className="mt-2 text-sm text-muted-foreground">
                   {item.description}
                 </p>
@@ -262,14 +300,4 @@ export default function MediaGallery() {
       )}
     </div>
   );
-}
-
-interface MediaItem {
-  id: number;
-  title: string;
-  type: string;
-  url: string;
-  description?: string;
-  createdAt: string;
-  metadata?: { mimetype?: string };
 }

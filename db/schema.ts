@@ -38,10 +38,12 @@ export const mediaItems = pgTable("media_items", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").references(() => users.id).notNull(),
   albumId: integer("album_id").references(() => albums.id),
-  type: text("type").notNull(), // photo, video, audio, document
+  type: text("type").notNull(), // photo, video, audio, document, post
   title: text("title").notNull(),
   description: text("description"),
   url: text("url").notNull(),
+  websiteUrl: text("website_url"), // New field for post type
+  content: text("content"), // New field for post type
   metadata: jsonb("metadata"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
