@@ -226,14 +226,15 @@ export function registerRoutes(app: Express): Server {
 
     try {
       const albumId = req.query.albumId ? parseInt(req.query.albumId as string) : undefined;
+      const userId = req.query.userId ? parseInt(req.query.userId as string) : req.user.id;
 
       const items = await db.query.mediaItems.findMany({
         where: albumId
           ? and(
-              eq(mediaItems.userId, req.user.id),
+              eq(mediaItems.userId, userId),
               eq(mediaItems.albumId, albumId)
             )
-          : eq(mediaItems.userId, req.user.id),
+          : eq(mediaItems.userId, userId),
         with: {
           tags: true,
         },
