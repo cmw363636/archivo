@@ -41,9 +41,18 @@ export default function ProfilePage() {
     enabled: !!userId,
   });
 
-  // Query for media uploaded by the user
+  // Query for media uploaded by the profile user
   const { data: uploadedMedia = [] } = useQuery<MediaItem[]>({
-    queryKey: ["/api/media"],
+    queryKey: ["/api/media", userId],
+    queryFn: async () => {
+      const response = await fetch(`/api/media?userId=${userId}`, {
+        credentials: 'include'
+      });
+      if (!response.ok) {
+        throw new Error('Failed to fetch uploaded media');
+      }
+      return response.json();
+    },
     enabled: !!userId,
   });
 
@@ -179,14 +188,14 @@ export default function ProfilePage() {
               <div className="space-y-4">
                 {uploadedMedia.slice(0, 5).length > 0 ? (
                   uploadedMedia.slice(0, 5).map((media) => (
-                    <div 
-                      key={media.id} 
+                    <div
+                      key={media.id}
                       className="flex items-center gap-4 p-2 rounded-lg hover:bg-accent cursor-pointer"
                       onClick={() => setSelectedMedia(media)}
                     >
                       {media.type === 'photo' && (
-                        <img 
-                          src={media.url} 
+                        <img
+                          src={media.url}
                           alt={media.title}
                           className="w-16 h-16 object-cover rounded-md"
                         />
@@ -233,14 +242,14 @@ export default function ProfilePage() {
               <div className="space-y-4">
                 {taggedMedia.slice(0, 5).length > 0 ? (
                   taggedMedia.slice(0, 5).map((media) => (
-                    <div 
-                      key={media.id} 
+                    <div
+                      key={media.id}
                       className="flex items-center gap-4 p-2 rounded-lg hover:bg-accent cursor-pointer"
                       onClick={() => setSelectedMedia(media)}
                     >
                       {media.type === 'photo' && (
-                        <img 
-                          src={media.url} 
+                        <img
+                          src={media.url}
                           alt={media.title}
                           className="w-16 h-16 object-cover rounded-md"
                         />
