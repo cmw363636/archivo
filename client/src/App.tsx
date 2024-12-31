@@ -28,6 +28,7 @@ function App() {
     <Switch>
       <Route path="/" component={HomePage} />
       <Route path="/profile" component={ProfilePage} />
+      <Route path="/profile/:id" component={ProfilePage} />
       <Route path="/profile/uploaded" component={UploadedMediaPage} />
       <Route path="/profile/tagged" component={TaggedMediaPage} />
     </Switch>

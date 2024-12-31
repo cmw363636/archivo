@@ -5,7 +5,7 @@ import FamilyTree from "../components/FamilyTree";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Link } from "wouter";
+import { Link, useParams } from "wouter";
 import {
   Sheet,
   SheetContent,
@@ -17,19 +17,34 @@ import { MediaDialog } from "../components/MediaDialog";
 
 export default function ProfilePage() {
   const { user, logout } = useUser();
+  const params = useParams();
   const [view, setView] = useState<"profile" | "gallery" | "tree" | "albums">("profile");
   const [selectedMedia, setSelectedMedia] = useState<MediaItem | null>(null);
 
+  // If there's an ID parameter and it's different from the current user's ID,
+  // fetch that user's profile
+  const userId = params.id ? parseInt(params.id) : user?.id;
+  const isOwnProfile = userId === user?.id;
+
+  // Query for the profile user's data if it's not the current user
+  const { data: profileUser } = useQuery({
+    queryKey: ["/api/users", userId],
+    enabled: !!userId && !isOwnProfile,
+  });
+
+  // Use either the fetched profile user or the current user
+  const displayUser = isOwnProfile ? user : profileUser;
+
   // Query for media where user is tagged
   const { data: taggedMedia = [] } = useQuery<MediaItem[]>({
-    queryKey: ["/api/media/tagged", user?.id],
-    enabled: !!user,
+    queryKey: ["/api/media/tagged", userId],
+    enabled: !!userId,
   });
 
   // Query for media uploaded by the user
   const { data: uploadedMedia = [] } = useQuery<MediaItem[]>({
     queryKey: ["/api/media"],
-    enabled: !!user,
+    enabled: !!userId,
   });
 
   const handleLogout = async () => {
@@ -40,7 +55,7 @@ export default function ProfilePage() {
     }
   };
 
-  if (!user) {
+  if (!displayUser) {
     return null;
   }
 
@@ -74,12 +89,22 @@ export default function ProfilePage() {
                       Family Tree
                     </Button>
                   </Link>
-                  <Button variant="default" className="w-full">
-                    Profile
-                  </Button>
-                  <Button variant="outline" onClick={handleLogout}>
-                    Logout
-                  </Button>
+                  {isOwnProfile ? (
+                    <>
+                      <Button variant="default" className="w-full">
+                        Profile
+                      </Button>
+                      <Button variant="outline" onClick={handleLogout}>
+                        Logout
+                      </Button>
+                    </>
+                  ) : (
+                    <Link href="/profile">
+                      <Button variant="ghost" className="w-full">
+                        My Profile
+                      </Button>
+                    </Link>
+                  )}
                 </nav>
               </SheetContent>
             </Sheet>
@@ -94,10 +119,18 @@ export default function ProfilePage() {
               <Link href="/">
                 <Button variant="ghost">Family Tree</Button>
               </Link>
-              <Button variant="default">Profile</Button>
-              <Button variant="outline" onClick={handleLogout}>
-                Logout
-              </Button>
+              {isOwnProfile ? (
+                <>
+                  <Button variant="default">Profile</Button>
+                  <Button variant="outline" onClick={handleLogout}>
+                    Logout
+                  </Button>
+                </>
+              ) : (
+                <Link href="/profile">
+                  <Button variant="ghost">My Profile</Button>
+                </Link>
+              )}
             </nav>
           </div>
         </div>
@@ -114,16 +147,18 @@ export default function ProfilePage() {
               <div className="space-y-4">
                 <div>
                   <h3 className="text-lg font-medium">Display Name</h3>
-                  <p className="text-muted-foreground">{user.displayName}</p>
+                  <p className="text-muted-foreground">{displayUser.displayName}</p>
                 </div>
                 <div>
                   <h3 className="text-lg font-medium">Username</h3>
-                  <p className="text-muted-foreground">{user.username}</p>
+                  <p className="text-muted-foreground">{displayUser.username}</p>
                 </div>
-                <div>
-                  <h3 className="text-lg font-medium">Birthday</h3>
-                  <UserProfileEditor />
-                </div>
+                {isOwnProfile && (
+                  <div>
+                    <h3 className="text-lg font-medium">Birthday</h3>
+                    <UserProfileEditor />
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -133,7 +168,7 @@ export default function ProfilePage() {
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Uploaded Media</CardTitle>
               {uploadedMedia.length > 5 && (
-                <Link href="/profile/uploaded">
+                <Link href={`/profile/${userId}/uploaded`}>
                   <Button variant="ghost">
                     See All
                   </Button>
@@ -187,7 +222,7 @@ export default function ProfilePage() {
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Tagged Media</CardTitle>
               {taggedMedia.length > 5 && (
-                <Link href="/profile/tagged">
+                <Link href={`/profile/${userId}/tagged`}>
                   <Button variant="ghost">
                     See All
                   </Button>
