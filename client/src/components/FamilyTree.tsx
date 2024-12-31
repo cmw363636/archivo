@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import {
   Card,
   CardContent,
@@ -27,212 +27,23 @@ import { useUser } from "../hooks/use-user";
 import { useToast } from "@/hooks/use-toast";
 import { Trash2 } from "lucide-react";
 
-type FamilyMember = {
-  id: number;
-  username: string;
-  displayName: string;
-};
-
-type FamilyRelation = {
-  id: number;
-  fromUserId: number;
-  toUserId: number;
-  relationType: 'parent' | 'child' | 'sibling' | 'spouse';
-  fromUser: FamilyMember;
-  toUser: FamilyMember;
-};
-
-const relationTypeMap = {
-  parent: 'child',
-  child: 'parent',
-  spouse: 'spouse',
-  sibling: 'sibling'
-} as const;
+// ... keep existing types and constants ...
 
 export default function FamilyTree() {
   const { user } = useUser();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
   const [selectedMember, setSelectedMember] = useState<FamilyMember | null>(null);
   const [isAddingRelation, setIsAddingRelation] = useState(false);
   const [selectedRelativeMemberId, setSelectedRelativeMemberId] = useState<string>("");
   const [relationType, setRelationType] = useState<string>("");
 
-  // Add state for panning
-  const [position, setPosition] = useState({ x: 0, y: 0 });
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-  const svgRef = useRef<SVGSVGElement>(null);
+  // ... keep existing state and hooks ...
 
-  const { data: relations = [], isLoading } = useQuery<FamilyRelation[]>({
-    queryKey: ["/api/family"],
-    enabled: !!user,
-  });
-
-  const { data: allUsers = [] } = useQuery<FamilyMember[]>({
-    queryKey: ["/api/users"],
-    enabled: !!user,
-  });
-
-  // Add mouse event handlers for panning
-  const handleMouseDown = (event: React.MouseEvent) => {
-    if (event.button !== 0) return; // Only handle left click
-    setIsDragging(true);
-    setDragStart({
-      x: event.clientX - position.x,
-      y: event.clientY - position.y
-    });
+  const handleNodeClick = (userId: number) => {
+    setLocation(`/profile/${userId}`);
   };
-
-  const handleMouseMove = (event: React.MouseEvent) => {
-    if (!isDragging) return;
-    const newX = event.clientX - dragStart.x;
-    const newY = event.clientY - dragStart.y;
-    setPosition({ x: newX, y: newY });
-  };
-
-  const handleMouseUp = () => {
-    setIsDragging(false);
-  };
-
-  const handleMouseLeave = () => {
-    setIsDragging(false);
-  };
-
-  const addRelationMutation = useMutation({
-    mutationFn: async (data: { toUserId: number; relationType: string }) => {
-      const response = await fetch("/api/family", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-        credentials: "include",
-      });
-
-      if (!response.ok) {
-        throw new Error(await response.text());
-      }
-
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/family"] });
-      setIsAddingRelation(false);
-      setSelectedRelativeMemberId("");
-      setRelationType("");
-      toast({
-        title: "Success",
-        description: "Family relation added successfully",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: async (relationId: number) => {
-      const response = await fetch(`/api/family/${relationId}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-
-      if (!response.ok) {
-        throw new Error(await response.text());
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/family"] });
-      toast({
-        title: "Success",
-        description: "Relationship deleted successfully",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const handleDeleteRelation = async (relationId: number) => {
-    try {
-      await deleteMutation.mutateAsync(relationId);
-    } catch (error) {
-      // Error handling is done in the mutation
-    }
-  };
-
-  const handleAddRelation = () => {
-    if (!selectedRelativeMemberId) {
-      toast({
-        title: "Error",
-        description: "Please select a family member",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!relationType) {
-      toast({
-        title: "Error",
-        description: "Please select a relation type",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const memberId = parseInt(selectedRelativeMemberId);
-    if (isNaN(memberId)) {
-      toast({
-        title: "Error",
-        description: "Invalid family member selected",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    addRelationMutation.mutate({
-      toUserId: memberId,
-      relationType,
-    });
-  };
-
-  if (!user) {
-    return null;
-  }
-
-  if (isLoading) {
-    return (
-      <div className="space-y-4">
-        <div className="h-[400px] w-full bg-muted animate-pulse rounded-lg" />
-      </div>
-    );
-  }
-
-  const familyMembers = relations.reduce((acc, relation) => {
-    const fromUser = relation.fromUser;
-    const toUser = relation.toUser;
-    if (!acc.some((m) => m.id === fromUser.id)) {
-      acc.push(fromUser);
-    }
-    if (!acc.some((m) => m.id === toUser.id)) {
-      acc.push(toUser);
-    }
-    return acc;
-  }, [] as FamilyMember[]);
-
-  // Calculate tree layout
-  const treeWidth = 1200;
-  const treeHeight = 800;
-  const nodeRadius = 40;
-  const verticalSpacing = 150;
-  const horizontalSpacing = 200;
 
   const renderTreeSvg = () => {
     const centerX = treeWidth / 2;
@@ -240,41 +51,33 @@ export default function FamilyTree() {
 
     // Position current user at center
     const userNode = (
-      <Link href={`/profile/${user.id}`} key={user.id}>
-        <g transform={`translate(${centerX},${centerY})`}>
-          <circle
-            r={nodeRadius}
-            fill="hsl(var(--primary))"
-            className="stroke-2 stroke-white cursor-pointer"
-          />
-          <text
-            textAnchor="middle"
-            dy=".3em"
-            fill="white"
-            className="text-sm font-medium pointer-events-none"
-          >
-            {user.displayName || user.username}
-          </text>
-        </g>
-      </Link>
+      <g 
+        key={user.id} 
+        transform={`translate(${centerX},${centerY})`}
+        onClick={(e) => {
+          e.stopPropagation();
+          handleNodeClick(user.id);
+        }}
+        style={{ cursor: 'pointer' }}
+      >
+        <circle
+          r={nodeRadius}
+          fill="hsl(var(--primary))"
+          className="stroke-2 stroke-white"
+        />
+        <text
+          textAnchor="middle"
+          dy=".3em"
+          fill="white"
+          className="text-sm font-medium"
+          pointerEvents="none"
+        >
+          {user.displayName || user.username}
+        </text>
+      </g>
     );
 
-    // Group family members by their relationship to the user
-    const familyGroups = relations.reduce((acc, relation) => {
-      const isFromUser = relation.fromUserId === user.id;
-      const member = isFromUser ? relation.toUser : relation.fromUser;
-      const type = isFromUser
-        ? relation.relationType
-        : relationTypeMap[relation.relationType as keyof typeof relationTypeMap];
-
-      if (!acc[type]) {
-        acc[type] = [];
-      }
-      if (!acc[type].some(m => m.id === member.id)) {
-        acc[type].push(member);
-      }
-      return acc;
-    }, {} as Record<string, FamilyMember[]>);
+    // ... keep existing familyGroups logic ...
 
     const memberNodes: JSX.Element[] = [];
     const relationLines: JSX.Element[] = [];
@@ -287,26 +90,30 @@ export default function FamilyTree() {
         const y = centerY - verticalSpacing;
 
         memberNodes.push(
-          <Link href={`/profile/${parent.id}`} key={parent.id}>
-            <g
-              transform={`translate(${x},${y})`}
-              className="cursor-pointer"
+          <g
+            key={parent.id}
+            transform={`translate(${x},${y})`}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleNodeClick(parent.id);
+            }}
+            style={{ cursor: 'pointer' }}
+          >
+            <circle
+              r={nodeRadius}
+              fill="hsl(var(--secondary))"
+              className="stroke-2 stroke-white"
+            />
+            <text
+              textAnchor="middle"
+              dy=".3em"
+              fill="hsl(var(--secondary-foreground))"
+              className="text-sm font-medium"
+              pointerEvents="none"
             >
-              <circle
-                r={nodeRadius}
-                fill="hsl(var(--secondary))"
-                className="stroke-2 stroke-white"
-              />
-              <text
-                textAnchor="middle"
-                dy=".3em"
-                fill="hsl(var(--secondary-foreground))"
-                className="text-sm font-medium pointer-events-none"
-              >
-                {parent.displayName || parent.username}
-              </text>
-            </g>
-          </Link>
+              {parent.displayName || parent.username}
+            </text>
+          </g>
         );
 
         relationLines.push(
@@ -319,13 +126,13 @@ export default function FamilyTree() {
             stroke="hsl(var(--border))"
             strokeWidth="2"
             markerEnd="url(#arrowhead)"
-            className="pointer-events-none"
+            pointerEvents="none"
           />
         );
       });
     }
 
-    // Position children below
+    // Position children below with the same pattern
     if (familyGroups.child) {
       const childWidth = horizontalSpacing * (familyGroups.child.length - 1);
       familyGroups.child.forEach((child, i) => {
@@ -333,26 +140,30 @@ export default function FamilyTree() {
         const y = centerY + verticalSpacing;
 
         memberNodes.push(
-          <Link href={`/profile/${child.id}`} key={child.id}>
-            <g
-              transform={`translate(${x},${y})`}
-              className="cursor-pointer"
+          <g
+            key={child.id}
+            transform={`translate(${x},${y})`}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleNodeClick(child.id);
+            }}
+            style={{ cursor: 'pointer' }}
+          >
+            <circle
+              r={nodeRadius}
+              fill="hsl(var(--secondary))"
+              className="stroke-2 stroke-white"
+            />
+            <text
+              textAnchor="middle"
+              dy=".3em"
+              fill="hsl(var(--secondary-foreground))"
+              className="text-sm font-medium"
+              pointerEvents="none"
             >
-              <circle
-                r={nodeRadius}
-                fill="hsl(var(--secondary))"
-                className="stroke-2 stroke-white"
-              />
-              <text
-                textAnchor="middle"
-                dy=".3em"
-                fill="hsl(var(--secondary-foreground))"
-                className="text-sm font-medium pointer-events-none"
-              >
-                {child.displayName || child.username}
-              </text>
-            </g>
-          </Link>
+              {child.displayName || child.username}
+            </text>
+          </g>
         );
 
         relationLines.push(
@@ -365,7 +176,7 @@ export default function FamilyTree() {
             stroke="hsl(var(--border))"
             strokeWidth="2"
             markerEnd="url(#arrowhead)"
-            className="pointer-events-none"
+            pointerEvents="none"
           />
         );
       });
@@ -378,26 +189,30 @@ export default function FamilyTree() {
         const y = centerY;
 
         memberNodes.push(
-          <Link href={`/profile/${spouse.id}`} key={spouse.id}>
-            <g
-              transform={`translate(${x},${y})`}
-              className="cursor-pointer"
+          <g
+            key={spouse.id}
+            transform={`translate(${x},${y})`}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleNodeClick(spouse.id);
+            }}
+            style={{ cursor: 'pointer' }}
+          >
+            <circle
+              r={nodeRadius}
+              fill="hsl(var(--secondary))"
+              className="stroke-2 stroke-white"
+            />
+            <text
+              textAnchor="middle"
+              dy=".3em"
+              fill="hsl(var(--secondary-foreground))"
+              className="text-sm font-medium"
+              pointerEvents="none"
             >
-              <circle
-                r={nodeRadius}
-                fill="hsl(var(--secondary))"
-                className="stroke-2 stroke-white"
-              />
-              <text
-                textAnchor="middle"
-                dy=".3em"
-                fill="hsl(var(--secondary-foreground))"
-                className="text-sm font-medium pointer-events-none"
-              >
-                {spouse.displayName || spouse.username}
-              </text>
-            </g>
-          </Link>
+              {spouse.displayName || spouse.username}
+            </text>
+          </g>
         );
 
         relationLines.push(
@@ -410,7 +225,7 @@ export default function FamilyTree() {
             stroke="hsl(var(--border))"
             strokeWidth="2"
             markerEnd="url(#arrowhead)"
-            className="pointer-events-none"
+            pointerEvents="none"
           />
         );
       });
@@ -423,26 +238,30 @@ export default function FamilyTree() {
         const y = centerY;
 
         memberNodes.push(
-          <Link href={`/profile/${sibling.id}`} key={sibling.id}>
-            <g
-              transform={`translate(${x},${y})`}
-              className="cursor-pointer"
+          <g
+            key={sibling.id}
+            transform={`translate(${x},${y})`}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleNodeClick(sibling.id);
+            }}
+            style={{ cursor: 'pointer' }}
+          >
+            <circle
+              r={nodeRadius}
+              fill="hsl(var(--secondary))"
+              className="stroke-2 stroke-white"
+            />
+            <text
+              textAnchor="middle"
+              dy=".3em"
+              fill="hsl(var(--secondary-foreground))"
+              className="text-sm font-medium"
+              pointerEvents="none"
             >
-              <circle
-                r={nodeRadius}
-                fill="hsl(var(--secondary))"
-                className="stroke-2 stroke-white"
-              />
-              <text
-                textAnchor="middle"
-                dy=".3em"
-                fill="hsl(var(--secondary-foreground))"
-                className="text-sm font-medium pointer-events-none"
-              >
-                {sibling.displayName || sibling.username}
-              </text>
-            </g>
-          </Link>
+              {sibling.displayName || sibling.username}
+            </text>
+          </g>
         );
 
         relationLines.push(
@@ -455,7 +274,7 @@ export default function FamilyTree() {
             stroke="hsl(var(--border))"
             strokeWidth="2"
             markerEnd="url(#arrowhead)"
-            className="pointer-events-none"
+            pointerEvents="none"
           />
         );
       });
@@ -496,6 +315,8 @@ export default function FamilyTree() {
     );
   };
 
+  // ... keep existing return statement and dialogs ...
+
   return (
     <div className="space-y-4">
       <Card>
@@ -517,7 +338,7 @@ export default function FamilyTree() {
         </CardContent>
       </Card>
 
-      {/* Member Details Dialog */}
+      {/* Keep existing dialogs */}
       <Dialog
         open={selectedMember !== null}
         onOpenChange={(open) => !open && setSelectedMember(null)}
@@ -560,7 +381,6 @@ export default function FamilyTree() {
         </DialogContent>
       </Dialog>
 
-      {/* Add Relation Dialog */}
       <Dialog
         open={isAddingRelation}
         onOpenChange={(open) => {
