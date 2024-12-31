@@ -25,7 +25,7 @@ export function UserProfileEditor() {
   );
 
   const updateMutation = useMutation({
-    mutationFn: async (data: Partial<User>) => {
+    mutationFn: async (data: { dateOfBirth: string | null }) => {
       const response = await fetch("/api/user/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
