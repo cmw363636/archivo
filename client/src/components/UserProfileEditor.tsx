@@ -12,24 +12,20 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { CalendarIcon } from "lucide-react";
-import { format } from "date-fns";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
-import { SelectUser } from "@db/schema";
+import { format, isValid, parse } from "date-fns";
+import { User } from "@db/schema";
 
 export function UserProfileEditor() {
   const { user } = useUser();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
-  const [date, setDate] = useState<Date | undefined>(
-    user?.dateOfBirth ? new Date(user.dateOfBirth) : undefined
+  const [dateInput, setDateInput] = useState(
+    user?.dateOfBirth ? format(new Date(user.dateOfBirth), "yyyy-MM-dd") : ""
   );
 
   const updateMutation = useMutation({
-    mutationFn: async (data: Partial<SelectUser>) => {
+    mutationFn: async (data: Partial<User>) => {
       const response = await fetch("/api/user/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -48,7 +44,7 @@ export function UserProfileEditor() {
       setIsOpen(false);
       toast({
         title: "Success",
-        description: "Profile updated successfully",
+        description: "Birthday updated successfully",
       });
     },
     onError: (error: Error) => {
@@ -62,10 +58,21 @@ export function UserProfileEditor() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!date) return;
+
+    // Parse the date from the input
+    const parsedDate = parse(dateInput, "yyyy-MM-dd", new Date());
+
+    if (!isValid(parsedDate)) {
+      toast({
+        title: "Error",
+        description: "Please enter a valid date in YYYY-MM-DD format",
+        variant: "destructive",
+      });
+      return;
+    }
 
     updateMutation.mutate({
-      dateOfBirth: date.toISOString(),
+      dateOfBirth: parsedDate.toISOString(),
     });
   };
 
@@ -100,29 +107,18 @@ export function UserProfileEditor() {
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label>Date of Birth</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant={"outline"}
-                  className={cn(
-                    "w-full justify-start text-left font-normal",
-                    !date && "text-muted-foreground"
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {date ? format(date, "PPP") : <span>Pick a date</span>}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
-                <Calendar
-                  mode="single"
-                  selected={date}
-                  onSelect={setDate}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
+            <Label>Date of Birth (YYYY-MM-DD)</Label>
+            <Input
+              type="text"
+              placeholder="1987-01-01"
+              value={dateInput}
+              onChange={(e) => setDateInput(e.target.value)}
+              pattern="\d{4}-\d{2}-\d{2}"
+              title="Please enter date in YYYY-MM-DD format"
+            />
+            <p className="text-sm text-muted-foreground">
+              Enter your birth date in YYYY-MM-DD format (e.g., 1987-01-01)
+            </p>
           </div>
           <Button type="submit" className="w-full">
             Save
