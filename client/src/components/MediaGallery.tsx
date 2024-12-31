@@ -27,6 +27,13 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 
+enum MediaError {
+  MEDIA_ERR_ABORTED = 1,
+  MEDIA_ERR_NETWORK = 2,
+  MEDIA_ERR_DECODE = 3,
+  MEDIA_ERR_SRC_NOT_SUPPORTED = 4,
+}
+
 export default function MediaGallery() {
   const { mediaItems, isLoading } = useMedia();
   const [search, setSearch] = useState("");
@@ -73,11 +80,38 @@ export default function MediaGallery() {
   }
 
   const renderMediaContent = (item: MediaItem) => {
-    const handleError = (error: Error, mediaType: string) => {
-      console.error(`${mediaType} playback error:`, error);
+    const handleError = (error: Error, mediaType: string, element: HTMLMediaElement) => {
+      console.error(`${mediaType} playback error:`, {
+        error,
+        networkState: element.networkState,
+        readyState: element.readyState,
+        currentSrc: element.currentSrc,
+        error: element.error
+      });
+
+      let errorMessage = `Error playing ${mediaType}`;
+      if (element.error) {
+        switch (element.error.code) {
+          case MediaError.MEDIA_ERR_ABORTED:
+            errorMessage += ": Playback aborted";
+            break;
+          case MediaError.MEDIA_ERR_NETWORK:
+            errorMessage += ": Network error";
+            break;
+          case MediaError.MEDIA_ERR_DECODE:
+            errorMessage += ": Decoding error";
+            break;
+          case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED:
+            errorMessage += ": Format not supported";
+            break;
+          default:
+            errorMessage += `: ${element.error.message}`;
+        }
+      }
+
       setMediaErrors(prev => ({
         ...prev,
-        [item.id]: `Error playing ${mediaType}: ${error.message}`
+        [item.id]: errorMessage
       }));
     };
 
@@ -88,7 +122,10 @@ export default function MediaGallery() {
             src={item.url}
             alt={item.title}
             className="w-full h-48 object-cover rounded-md"
-            onError={(e) => handleError(e as any as Error, "image")}
+            onError={(e) => {
+              const img = e.currentTarget;
+              handleError(e as any as Error, "image", img as any);
+            }}
           />
         );
       case "video":
@@ -101,7 +138,10 @@ export default function MediaGallery() {
               crossOrigin="anonymous"
               playsInline
               controlsList="nodownload"
-              onError={(e) => handleError(e as any as Error, "video")}
+              onError={(e) => {
+                const video = e.currentTarget;
+                handleError(e as any as Error, "video", video);
+              }}
             >
               <source
                 src={item.url}
@@ -121,7 +161,10 @@ export default function MediaGallery() {
               preload="metadata"
               crossOrigin="anonymous"
               controlsList="nodownload"
-              onError={(e) => handleError(e as any as Error, "audio")}
+              onError={(e) => {
+                const audio = e.currentTarget;
+                handleError(e as any as Error, "audio", audio);
+              }}
             >
               <source
                 src={item.url}
@@ -209,4 +252,14 @@ export default function MediaGallery() {
       )}
     </div>
   );
+}
+
+interface MediaItem {
+  id: number;
+  title: string;
+  type: string;
+  url: string;
+  description?: string;
+  createdAt: string;
+  metadata?: { mimetype?: string };
 }
