@@ -33,51 +33,31 @@ export function registerRoutes(app: Express): Server {
   // Setup auth routes first
   setupAuth(app);
 
-  // Serve uploaded files with proper content-type headers
-  app.use('/uploads', (req, res, next) => {
-    const filePath = path.join(uploadDir, path.basename(req.path));
+  // Serve uploaded files
+  app.use('/uploads', express.static(uploadDir, {
+    setHeaders: (res, filePath) => {
+      // Set proper MIME type
+      const mimeType = mime.lookup(filePath) || 'application/octet-stream';
+      res.setHeader('Content-Type', mimeType);
 
-    // Check if file exists
-    if (!fs.existsSync(filePath)) {
-      console.error(`File not found: ${filePath}`);
-      return res.status(404).send('File not found');
-    }
+      // Enable CORS
+      res.setHeader('Access-Control-Allow-Origin', '*');
 
-    // Log file details for debugging
-    console.log('Serving file:', {
-      path: filePath,
-      contentType: mime.lookup(filePath) || 'application/octet-stream'
-    });
+      // Set caching headers
+      res.setHeader('Cache-Control', 'no-cache');
 
-    // Get file stats for range requests
-    const stat = fs.statSync(filePath);
-    const fileSize = stat.size;
-    const range = req.headers.range;
+      // Enable partial content support
+      res.setHeader('Accept-Ranges', 'bytes');
 
-    if (range) {
-      const parts = range.replace(/bytes=/, "").split("-");
-      const start = parseInt(parts[0], 10);
-      const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
-      const chunksize = (end - start) + 1;
-      const file = fs.createReadStream(filePath, { start, end });
-      const head = {
-        'Content-Range': `bytes ${start}-${end}/${fileSize}`,
-        'Accept-Ranges': 'bytes',
-        'Content-Length': chunksize,
-        'Content-Type': mime.lookup(filePath) || 'application/octet-stream',
-      };
-      res.writeHead(206, head);
-      file.pipe(res);
-    } else {
-      const head = {
-        'Content-Length': fileSize,
-        'Content-Type': mime.lookup(filePath) || 'application/octet-stream',
-        'Accept-Ranges': 'bytes'
-      };
-      res.writeHead(200, head);
-      fs.createReadStream(filePath).pipe(res);
-    }
-  });
+      console.log('Serving file:', {
+        path: filePath,
+        contentType: mimeType,
+        size: fs.statSync(filePath).size
+      });
+    },
+    index: false,
+    dotfiles: 'deny'
+  }));
 
   // Get all users (for family relations)
   app.get("/api/users", async (req, res) => {

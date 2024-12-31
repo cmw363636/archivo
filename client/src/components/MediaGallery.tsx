@@ -87,6 +87,8 @@ export default function MediaGallery() {
               controls
               className="w-full h-full rounded-md"
               preload="metadata"
+              crossOrigin="anonymous"
+              playsInline
               controlsList="nodownload"
               onError={(e) => {
                 console.error('Video playback error:', e);
@@ -94,7 +96,10 @@ export default function MediaGallery() {
                 if (video.error) {
                   console.error('Video error details:', {
                     code: video.error.code,
-                    message: video.error.message
+                    message: video.error.message,
+                    networkState: video.networkState,
+                    readyState: video.readyState,
+                    currentSrc: video.currentSrc,
                   });
                 }
               }}
@@ -114,7 +119,8 @@ export default function MediaGallery() {
             <audio
               controls
               className="w-full max-w-md"
-              preload="auto"
+              preload="metadata"
+              crossOrigin="anonymous"
               controlsList="nodownload"
               onError={(e) => {
                 console.error('Audio playback error:', e);
@@ -122,7 +128,10 @@ export default function MediaGallery() {
                 if (audio.error) {
                   console.error('Audio error details:', {
                     code: audio.error.code,
-                    message: audio.error.message
+                    message: audio.error.message,
+                    networkState: audio.networkState,
+                    readyState: audio.readyState,
+                    currentSrc: audio.currentSrc,
                   });
                 }
               }}
