@@ -192,17 +192,25 @@ export function registerRoutes(app: Express): Server {
         await fs.promises.chmod(req.file.path, 0o644);
       }
 
+      // Generate a default title if none provided
+      let mediaTitle = title?.trim() || 'Untitled';
+      if (type === 'photo') mediaTitle = title?.trim() || 'Photo';
+      if (type === 'video') mediaTitle = title?.trim() || 'Video';
+      if (type === 'audio') mediaTitle = title?.trim() || 'Audio';
+      if (type === 'document') mediaTitle = title?.trim() || 'Document';
+      if (type === 'post') mediaTitle = title?.trim() || 'Post';
+
       const [item] = await db
         .insert(mediaItems)
         .values({
           userId: req.user.id,
           albumId: albumId ? parseInt(albumId) : null,
           type,
-          title,
-          description,
+          title: mediaTitle,
+          description: description?.trim() || null,
           url,
-          website_url: type === 'post' ? websiteUrl : null,
-          content: type === 'post' ? content : null,
+          website_url: type === 'post' ? websiteUrl?.trim() || null : null,
+          content: type === 'post' ? content?.trim() || null : null,
           metadata: req.file ? {
             originalName: req.file.originalname,
             size: req.file.size,
