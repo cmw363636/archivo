@@ -149,7 +149,10 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
       const response = await fetch("/api/family", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          ...data,
+          inheritRelations: true // Add flag to indicate backend should handle inheritance
+        }),
         credentials: "include",
       });
 
@@ -166,7 +169,7 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
       setRelationType("");
       toast({
         title: "Success",
-        description: "Family relation added successfully",
+        description: "Family relation and inherited relationships added successfully",
       });
     },
     onError: (error: Error) => {
