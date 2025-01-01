@@ -28,10 +28,11 @@ export default function UploadedMediaPage() {
     enabled: !!userId && !isOwnProfile,
   });
 
+  // Query for media uploaded by the profile user only
   const { data: uploadedMedia = [] } = useQuery<MediaItem[]>({
     queryKey: ["/api/media", userId],
     queryFn: async () => {
-      const response = await fetch(`/api/media?userId=${userId}`, {
+      const response = await fetch(`/api/media?userId=${userId}&uploaded=true`, {
         credentials: 'include'
       });
       if (!response.ok) {
@@ -74,12 +75,12 @@ export default function UploadedMediaPage() {
                       Media Gallery
                     </Button>
                   </Link>
-                  <Link href="/">
+                  <Link href="/albums">
                     <Button variant="ghost" className="w-full">
                       Albums
                     </Button>
                   </Link>
-                  <Link href="/">
+                  <Link href="/family">
                     <Button variant="ghost" className="w-full">
                       Family Tree
                     </Button>
@@ -100,10 +101,10 @@ export default function UploadedMediaPage() {
               <Link href="/">
                 <Button variant="ghost">Media Gallery</Button>
               </Link>
-              <Link href="/">
+              <Link href="/albums">
                 <Button variant="ghost">Albums</Button>
               </Link>
-              <Link href="/">
+              <Link href="/family">
                 <Button variant="ghost">Family Tree</Button>
               </Link>
               <Link href="/profile">
