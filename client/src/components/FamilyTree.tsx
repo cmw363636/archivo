@@ -316,7 +316,7 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
     const memberNodes: JSX.Element[] = [];
     const relationLines: JSX.Element[] = [];
 
-    // Position parents above (keep as is, just arrows)
+    // Position parents above (keep lines without arrows or text)
     if (familyGroups.parent) {
       const parentWidth = horizontalSpacing * (familyGroups.parent.length - 1);
       familyGroups.parent.forEach((parent, i) => {
@@ -356,14 +356,13 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
             y2={centerY - nodeRadius}
             stroke="hsl(var(--border))"
             strokeWidth="2"
-            markerEnd="url(#arrowhead)"
             pointerEvents="none"
           />
         );
       });
     }
 
-    // Position children below (keep as is, just arrows)
+    // Position children below (keep lines without arrows or text)
     if (familyGroups.child) {
       const childWidth = horizontalSpacing * (familyGroups.child.length - 1);
       familyGroups.child.forEach((child, i) => {
@@ -403,14 +402,13 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
             y2={y - nodeRadius}
             stroke="hsl(var(--border))"
             strokeWidth="2"
-            markerEnd="url(#arrowhead)"
             pointerEvents="none"
           />
         );
       });
     }
 
-    // Position spouse to the left (with relationship text)
+    // Position spouse to the left (with "Spouse" text label)
     if (familyGroups.spouse) {
       familyGroups.spouse.forEach((spouse, i) => {
         const x = centerX - horizontalSpacing;
@@ -450,7 +448,6 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
               y2={centerY}
               stroke="hsl(var(--border))"
               strokeWidth="2"
-              markerEnd="url(#arrowhead)"
               pointerEvents="none"
             />
             <text
@@ -468,7 +465,7 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
       });
     }
 
-    // Position siblings to the right (with relationship text)
+    // Position siblings to the right (with "Sibling" text label)
     if (familyGroups.sibling) {
       familyGroups.sibling.forEach((sibling, i) => {
         const x = centerX + horizontalSpacing;
@@ -508,7 +505,6 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
               y2={y}
               stroke="hsl(var(--border))"
               strokeWidth="2"
-              markerEnd="url(#arrowhead)"
               pointerEvents="none"
             />
             <text
@@ -538,21 +534,6 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
         onMouseLeave={handleMouseLeave}
       >
         <g transform={`translate(${position.x},${position.y})`}>
-          <defs>
-            <marker
-              id="arrowhead"
-              markerWidth="10"
-              markerHeight="7"
-              refX="9"
-              refY="3.5"
-              orient="auto"
-            >
-              <polygon
-                points="0 0, 10 3.5, 0 7"
-                fill="hsl(var(--border))"
-              />
-            </marker>
-          </defs>
           {relationLines}
           {memberNodes}
           {userNode}
