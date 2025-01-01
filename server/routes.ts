@@ -260,7 +260,7 @@ export function registerRoutes(app: Express): Server {
       const uniqueMedia = Array.from(new Map(allMedia.map(item => [item.id, item])).values());
 
       // Sort by creation date
-      uniqueMedia.sort((a, b) => 
+      uniqueMedia.sort((a, b) =>
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
 
