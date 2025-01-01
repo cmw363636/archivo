@@ -150,7 +150,7 @@ export function registerRoutes(app: Express): Server {
       return res.status(401).send("Not authenticated");
     }
 
-    const { type, title, description, websiteUrl, content, albumId } = req.body;
+    const { type, title, description, websiteUrl, content, albumId, mediaDate } = req.body;
 
     try {
       let url = '';
@@ -203,6 +203,7 @@ export function registerRoutes(app: Express): Server {
           url,
           website_url: type === 'post' ? websiteUrl?.trim() || null : null,
           content: type === 'post' ? content?.trim() || null : null,
+          mediaDate: mediaDate ? new Date(mediaDate) : new Date(),
           metadata: req.file ? {
             originalName: req.file.originalname,
             size: req.file.size,
@@ -326,7 +327,7 @@ export function registerRoutes(app: Express): Server {
     }
 
     const { mediaId } = req.params;
-    const { title, description } = req.body;
+    const { title, description, mediaDate } = req.body;
 
     try {
       // Check if the media item exists and belongs to the user
@@ -349,8 +350,9 @@ export function registerRoutes(app: Express): Server {
       const [updatedItem] = await db
         .update(mediaItems)
         .set({
-          title: title?.trim() || mediaItem.title,
+          title: title?.trim() || null,
           description: description?.trim() || null,
+          mediaDate: mediaDate ? new Date(mediaDate) : mediaItem.mediaDate,
         })
         .where(eq(mediaItems.id, parseInt(mediaId)))
         .returning();

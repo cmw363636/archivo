@@ -1,7 +1,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Link2, Trash2, UserPlus, FolderPlus, X, Pencil } from "lucide-react";
+import { Link2, Trash2, UserPlus, FolderPlus, X, Pencil, CalendarIcon } from "lucide-react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import type { MediaItem } from "@db/schema";
@@ -11,6 +11,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState, useEffect } from "react";
 import React from 'react';
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 
 interface MediaDialogProps {
   media: MediaItem | null;
@@ -27,6 +31,7 @@ export function MediaDialog({ media, open, onOpenChange }: MediaDialogProps) {
   const [editTitle, setEditTitle] = useState("");
   const [editDescription, setEditDescription] = useState("");
   const [selectedAlbumId, setSelectedAlbumId] = useState<string>("");
+  const [editMediaDate, setEditMediaDate] = useState<Date | undefined>(undefined);
 
   const { data: albums = [] } = useQuery<any[]>({
     queryKey: ["/api/albums"],
@@ -37,18 +42,19 @@ export function MediaDialog({ media, open, onOpenChange }: MediaDialogProps) {
     if (media) {
       setEditTitle(media.title || "");
       setEditDescription(media.description || "");
+      setEditMediaDate(media.mediaDate ? new Date(media.mediaDate) : undefined);
     }
   }, [media]);
 
   const editMutation = useMutation({
-    mutationFn: async ({ mediaId, title, description }: { mediaId: number; title?: string; description?: string }) => {
+    mutationFn: async ({ mediaId, title, description, mediaDate }: { mediaId: number; title?: string; description?: string; mediaDate?: Date }) => {
       const response = await fetch(`/api/media/${mediaId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
         credentials: 'include',
-        body: JSON.stringify({ title, description }),
+        body: JSON.stringify({ title, description, mediaDate }),
       });
 
       if (!response.ok) {
@@ -181,6 +187,7 @@ export function MediaDialog({ media, open, onOpenChange }: MediaDialogProps) {
       mediaId: media.id,
       title: editTitle.trim(),
       description: editDescription.trim() || null,
+      mediaDate: editMediaDate,
     });
   };
 
@@ -205,7 +212,7 @@ export function MediaDialog({ media, open, onOpenChange }: MediaDialogProps) {
   };
 
   // Get the list of albums this media is not in yet
-  const availableAlbums = albums.filter(album => 
+  const availableAlbums = albums.filter(album =>
     media?.albumId !== album.id
   );
 
@@ -232,8 +239,31 @@ export function MediaDialog({ media, open, onOpenChange }: MediaDialogProps) {
                   onChange={(e) => setEditDescription(e.target.value)}
                   placeholder="Enter description"
                   rows={3}
+                  className="mb-2"
                 />
-                <div className="flex gap-2 mt-2">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant={"outline"}
+                      className={cn(
+                        "w-full justify-start text-left font-normal mb-2",
+                        !editMediaDate && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {editMediaDate ? format(editMediaDate, "PPP") : <span>Pick a date</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={editMediaDate}
+                      onSelect={setEditMediaDate}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+                <div className="flex gap-2">
                   <Button onClick={handleEdit} disabled={editMutation.isPending}>
                     Save
                   </Button>
@@ -244,7 +274,14 @@ export function MediaDialog({ media, open, onOpenChange }: MediaDialogProps) {
               </div>
             ) : (
               <>
-                <DialogTitle>{media.title}</DialogTitle>
+                <div className="flex-1">
+                  <DialogTitle>{media?.title}</DialogTitle>
+                  {media?.mediaDate && (
+                    <div className="text-sm text-muted-foreground mt-1">
+                      {format(new Date(media.mediaDate), "PPP")}
+                    </div>
+                  )}
+                </div>
                 <div className="flex gap-2">
                   <Button
                     variant="outline"
