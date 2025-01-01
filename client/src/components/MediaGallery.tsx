@@ -97,9 +97,7 @@ export function MediaGallery({ albumId }: MediaGalleryProps) {
   };
 
   const filteredItems = mediaItems.filter((item) => {
-    const matchesSearch = item.title
-      .toLowerCase()
-      .includes(search.toLowerCase());
+    const matchesSearch = !search || (item.title?.toLowerCase() || '').includes(search.toLowerCase());
     const matchesType = typeFilter === "all" || item.type === typeFilter;
     return matchesSearch && matchesType;
   });
@@ -125,7 +123,7 @@ export function MediaGallery({ albumId }: MediaGalleryProps) {
         return (
           <img
             src={item.url}
-            alt={item.title}
+            alt={item.title || ''}
             className="w-full h-48 object-cover rounded-md"
           />
         );
@@ -148,7 +146,7 @@ export function MediaGallery({ albumId }: MediaGalleryProps) {
           return (
             <img
               src={item.url}
-              alt={item.title}
+              alt={item.title || ''}
               className="w-full h-48 object-cover rounded-md"
             />
           );
