@@ -60,7 +60,7 @@ export default function MediaUpload() {
     formData.append("type", type);
     formData.append("title", title);
     formData.append("description", description);
-    if (selectedAlbumId) {
+    if (selectedAlbumId && selectedAlbumId !== "none") {
       formData.append("albumId", selectedAlbumId);
     }
 
@@ -174,7 +174,7 @@ export default function MediaUpload() {
                 <SelectValue placeholder="Select album" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">No Album</SelectItem>
+                <SelectItem value="none">No Album</SelectItem>
                 {albums.map((album) => (
                   <SelectItem key={album.id} value={album.id.toString()}>
                     {album.name}
