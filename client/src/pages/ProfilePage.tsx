@@ -83,21 +83,15 @@ export default function ProfilePage() {
               </SheetTrigger>
               <SheetContent>
                 <nav className="flex flex-col gap-2 pt-4">
-                  <Link href="/">
-                    <Button variant="ghost" className="w-full" onClick={() => setView("gallery")}>
-                      Media Gallery
-                    </Button>
-                  </Link>
-                  <Link href="/">
-                    <Button variant="ghost" className="w-full" onClick={() => setView("albums")}>
-                      Albums
-                    </Button>
-                  </Link>
-                  <Link href="/">
-                    <Button variant="ghost" className="w-full" onClick={() => setView("tree")}>
-                      Family Tree
-                    </Button>
-                  </Link>
+                  <Button variant="ghost" className="w-full" onClick={() => setView("gallery")}>
+                    Media Gallery
+                  </Button>
+                  <Button variant="ghost" className="w-full" onClick={() => setView("albums")}>
+                    Albums
+                  </Button>
+                  <Button variant="ghost" className="w-full" onClick={() => setView("tree")}>
+                    Family Tree
+                  </Button>
                   {isOwnProfile ? (
                     <>
                       <Button variant="default" className="w-full">
@@ -119,15 +113,24 @@ export default function ProfilePage() {
             </Sheet>
 
             <nav className="hidden md:flex items-center gap-2">
-              <Link href="/">
-                <Button variant="ghost">Media Gallery</Button>
-              </Link>
-              <Link href="/">
-                <Button variant="ghost">Albums</Button>
-              </Link>
-              <Link href="/">
-                <Button variant="ghost">Family Tree</Button>
-              </Link>
+              <Button 
+                variant={view === "gallery" ? "default" : "ghost"}
+                onClick={() => setView("gallery")}
+              >
+                Media Gallery
+              </Button>
+              <Button 
+                variant={view === "albums" ? "default" : "ghost"}
+                onClick={() => setView("albums")}
+              >
+                Albums
+              </Button>
+              <Button 
+                variant={view === "tree" ? "default" : "ghost"}
+                onClick={() => setView("tree")}
+              >
+                Family Tree
+              </Button>
               {isOwnProfile ? (
                 <>
                   <Button variant="default">Profile</Button>
