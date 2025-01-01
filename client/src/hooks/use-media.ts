@@ -41,17 +41,31 @@ export function useMedia(albumId?: number) {
 
   const uploadMutation = useMutation({
     mutationFn: async (formData: FormData) => {
-      const response = await fetch("/api/media", {
-        method: "POST",
-        body: formData,
-        credentials: "include",
-      });
-
-      if (!response.ok) {
-        throw new Error(await response.text());
+      // Validate file size before upload
+      const file = formData.get('file') as File;
+      if (file && file.size > 50 * 1024 * 1024) {
+        throw new Error('File size must be less than 50MB');
       }
 
-      return response.json();
+      try {
+        const response = await fetch("/api/media", {
+          method: "POST",
+          body: formData,
+          credentials: "include",
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(errorText || 'Upload failed');
+        }
+
+        return response.json();
+      } catch (error) {
+        if (error instanceof Error) {
+          throw error;
+        }
+        throw new Error('Upload failed. Please try again.');
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/media"] });
@@ -65,8 +79,8 @@ export function useMedia(albumId?: number) {
     },
     onError: (error: Error) => {
       toast({
-        title: "Error",
-        description: error.message,
+        title: "Upload Failed",
+        description: error.message || "Failed to upload media. Please try again.",
         variant: "destructive",
       });
     },

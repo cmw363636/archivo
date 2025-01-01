@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/select";
 import { Loader2, Upload } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 
 interface Album {
   id: number;
@@ -29,6 +30,7 @@ interface Album {
 
 export default function MediaUpload() {
   const { upload, isUploading } = useMedia();
+  const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [type, setType] = useState<string>("photo");
   const [title, setTitle] = useState("");
@@ -44,6 +46,15 @@ export default function MediaUpload() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (type !== "post" && !file) {
+      toast({
+        title: "Error",
+        description: "Please select a file to upload",
+        variant: "destructive",
+      });
+      return;
+    }
 
     const formData = new FormData();
     formData.append("type", type);
@@ -84,6 +95,40 @@ export default function MediaUpload() {
     setSelectedAlbumId("");
   };
 
+  const getAcceptTypes = (type: string) => {
+    switch (type) {
+      case "photo":
+        return "image/*";
+      case "video":
+        return "video/*";
+      case "audio":
+        return "audio/*";
+      case "document":
+        return ".pdf,.doc,.docx,.txt";
+      default:
+        return "image/*";
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (!selectedFile) {
+      return;
+    }
+
+    // Validate file size (max 50MB)
+    if (selectedFile.size > 50 * 1024 * 1024) {
+      toast({
+        title: "Error",
+        description: "File size must be less than 50MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setFile(selectedFile);
+  };
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -101,7 +146,10 @@ export default function MediaUpload() {
             <Label htmlFor="type">Type</Label>
             <Select
               value={type}
-              onValueChange={setType}
+              onValueChange={(value) => {
+                setType(value);
+                setFile(null); // Reset file when type changes
+              }}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select type" />
@@ -175,8 +223,10 @@ export default function MediaUpload() {
                 <Input
                   id="file"
                   type="file"
-                  onChange={(e) => setFile(e.target.files?.[0] || null)}
+                  onChange={handleFileChange}
                   accept="image/*"
+                  capture="environment"
+                  className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
                 />
               </div>
             </>
@@ -196,9 +246,17 @@ export default function MediaUpload() {
                 <Input
                   id="file"
                   type="file"
-                  onChange={(e) => setFile(e.target.files?.[0] || null)}
+                  onChange={handleFileChange}
+                  accept={getAcceptTypes(type)}
+                  capture={type === "photo" ? "environment" : undefined}
                   required
+                  className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
                 />
+                {file && (
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Selected: {file.name}
+                  </p>
+                )}
               </div>
             </>
           )}
