@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { UserProfileEditor } from "../components/UserProfileEditor";
 import { useUser } from "../hooks/use-user";
 import FamilyTree from "../components/FamilyTree";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Link, useParams } from "wouter";
+import { Link, useParams, useLocation } from "wouter";
 import {
   Sheet,
   SheetContent,
@@ -22,10 +22,16 @@ export default function ProfilePage() {
   const params = useParams();
   const [view, setView] = useState<"gallery" | "tree" | "albums" | null>(null);
   const [selectedMedia, setSelectedMedia] = useState<MediaItem | null>(null);
+  const [, navigate] = useLocation();
 
   // Get userId from URL params or fall back to current user's ID
   const userId = params.id ? parseInt(params.id) : user?.id;
   const isOwnProfile = userId === user?.id;
+
+  // Effect to reset view to null when userId changes
+  useEffect(() => {
+    setView(null);
+  }, [userId]);
 
   // Query for the profile user's data if it's not the current user
   const { data: profileUser } = useQuery({
@@ -76,7 +82,10 @@ export default function ProfilePage() {
       case "albums":
         return <AlbumManager />;
       case "tree":
-        return <FamilyTree />;
+        return <FamilyTree onUserClick={(userId) => {
+          navigate(`/profile/${userId}`);
+          setView(null);
+        }} />;
       default:
         return (
           <div className="grid gap-8 md:grid-cols-2">

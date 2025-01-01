@@ -42,6 +42,10 @@ type FamilyRelation = {
   toUser: FamilyMember;
 };
 
+type FamilyTreeProps = {
+  onUserClick?: (userId: number) => void;
+};
+
 const relationTypeMap = {
   parent: 'child',
   child: 'parent',
@@ -49,7 +53,7 @@ const relationTypeMap = {
   sibling: 'sibling'
 } as const;
 
-export default function FamilyTree() {
+export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
   const { user } = useUser();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -103,7 +107,9 @@ export default function FamilyTree() {
   const handleNodeClick = (event: React.MouseEvent, userId: number) => {
     event.stopPropagation();
     event.preventDefault();
-    if (!isDragging) {
+    if (!isDragging && onUserClick) {
+      onUserClick(userId);
+    } else if (!isDragging) {
       navigate(`/profile/${userId}`);
     }
   };
