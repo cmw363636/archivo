@@ -45,7 +45,7 @@ export default function ProfilePage() {
   const { data: uploadedMedia = [] } = useQuery<MediaItem[]>({
     queryKey: ["/api/media", userId],
     queryFn: async () => {
-      const response = await fetch(`/api/media?userId=${userId}`, {
+      const response = await fetch(`/api/media?userId=${userId}&uploaded=true`, {
         credentials: 'include'
       });
       if (!response.ok) {
