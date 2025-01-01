@@ -318,8 +318,9 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
 
     const memberNodes: JSX.Element[] = [];
     const relationLines: JSX.Element[] = [];
+    const siblingLines: JSX.Element[] = [];
 
-    // Position parents above (keep lines without arrows or text)
+    // Position parents above
     if (familyGroups.parent) {
       const parentWidth = horizontalSpacing * (familyGroups.parent.length - 1);
       familyGroups.parent.forEach((parent, i) => {
@@ -365,7 +366,7 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
       });
     }
 
-    // Position children below (keep lines without arrows or text)
+    // Position children below
     if (familyGroups.child) {
       const childWidth = horizontalSpacing * (familyGroups.child.length - 1);
       familyGroups.child.forEach((child, i) => {
@@ -411,7 +412,7 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
       });
     }
 
-    // Position spouse to the left (with "Spouse" text label)
+    // Position spouse to the left
     if (familyGroups.spouse) {
       familyGroups.spouse.forEach((spouse, i) => {
         const x = centerX - horizontalSpacing;
@@ -441,7 +442,6 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
           </g>
         );
 
-        // Add line with "Spouse" text
         relationLines.push(
           <g key={`line-spouse-${spouse.id}`}>
             <line
@@ -468,12 +468,16 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
       });
     }
 
-    // Position siblings to the right (with "Sibling" text label)
+    // Position siblings to the right and add lines between siblings
     if (familyGroups.sibling) {
+      // Calculate starting position for siblings
+      const siblingStartX = centerX + horizontalSpacing;
+
       familyGroups.sibling.forEach((sibling, i) => {
-        const x = centerX + horizontalSpacing;
+        const x = siblingStartX + (i * horizontalSpacing);
         const y = centerY;
 
+        // Add node for sibling
         memberNodes.push(
           <g
             key={sibling.id}
@@ -498,11 +502,11 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
           </g>
         );
 
-        // Add line with "Sibling" text
+        // Add line from user to sibling
         relationLines.push(
           <g key={`line-sibling-${sibling.id}`}>
             <line
-              x1={centerX + nodeRadius}
+              x1={i === 0 ? centerX + nodeRadius : siblingStartX + ((i - 1) * horizontalSpacing) + nodeRadius}
               y1={centerY}
               x2={x - nodeRadius}
               y2={y}
@@ -511,7 +515,7 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
               pointerEvents="none"
             />
             <text
-              x={(x + centerX) / 2}
+              x={(x + (i === 0 ? centerX : siblingStartX + ((i - 1) * horizontalSpacing))) / 2}
               y={y - 10}
               textAnchor="middle"
               fill="hsl(var(--muted-foreground))"
@@ -522,6 +526,33 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
             </text>
           </g>
         );
+
+        // Add lines between siblings (connect each sibling to the next one)
+        if (i > 0) {
+          siblingLines.push(
+            <g key={`sibling-connection-${i}`}>
+              <line
+                x1={siblingStartX + ((i - 1) * horizontalSpacing) + nodeRadius}
+                y1={centerY}
+                x2={x - nodeRadius}
+                y2={y}
+                stroke="hsl(var(--border))"
+                strokeWidth="2"
+                pointerEvents="none"
+              />
+              <text
+                x={(siblingStartX + ((i - 1) * horizontalSpacing) + x) / 2}
+                y={y - 10}
+                textAnchor="middle"
+                fill="hsl(var(--muted-foreground))"
+                className="text-xs"
+                pointerEvents="none"
+              >
+                Sibling
+              </text>
+            </g>
+          );
+        }
       });
     }
 
@@ -538,6 +569,7 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
       >
         <g transform={`translate(${position.x},${position.y})`}>
           {relationLines}
+          {siblingLines}
           {memberNodes}
           {userNode}
         </g>
@@ -559,38 +591,32 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
             Add Relation
           </Button>
         </CardHeader>
-        <CardContent className="flex justify-center overflow-hidden">
+        <CardContent className="space-y-4">
           <div className="relative w-full overflow-hidden border rounded-lg">
             {renderTreeSvg()}
           </div>
-        </CardContent>
-      </Card>
 
-      <Dialog
-        open={selectedMember !== null}
-        onOpenChange={(open) => !open && setSelectedMember(null)}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{selectedMember?.displayName || selectedMember?.username}</DialogTitle>
-            <DialogDescription>Family relations for this member</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <h3 className="font-medium">Relations:</h3>
-              <ul className="mt-2 space-y-2">
-                {relations
-                  .filter(
-                    (r) =>
-                      r.fromUserId === selectedMember?.id ||
-                      r.toUserId === selectedMember?.id
-                  )
-                  .map((relation) => (
-                    <li key={relation.id} className="text-sm flex items-center justify-between">
-                      <span>
-                        {relation.fromUserId === selectedMember?.id
-                          ? `${relation.relationType} of ${relation.toUser.displayName || relation.toUser.username}`
-                          : `${relation.fromUser.displayName || relation.fromUser.username}'s ${relation.relationType}`}
+          <Card>
+            <CardHeader>
+              <CardTitle>Your Family Relationships</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-2">
+                {relations.map((relation) => {
+                  const isFromUser = relation.fromUserId === user?.id;
+                  const relatedUser = isFromUser ? relation.toUser : relation.fromUser;
+                  const displayType = isFromUser
+                    ? relation.relationType
+                    : relationTypeMap[relation.relationType as keyof typeof relationTypeMap];
+
+                  return (
+                    <li key={relation.id} className="flex items-center justify-between">
+                      <span className="text-sm">
+                        <Link href={`/profile/${relatedUser.id}`} className="font-medium hover:underline">
+                          {relatedUser.displayName || relatedUser.username}
+                        </Link>
+                        {' is your '}
+                        <span className="font-medium">{displayType}</span>
                       </span>
                       <Button
                         variant="ghost"
@@ -601,12 +627,13 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
                     </li>
-                  ))}
+                  );
+                })}
               </ul>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+            </CardContent>
+          </Card>
+        </CardContent>
+      </Card>
 
       <Dialog
         open={isAddingRelation}
