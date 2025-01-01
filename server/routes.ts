@@ -227,8 +227,26 @@ export function registerRoutes(app: Express): Server {
     try {
       const albumId = req.query.albumId ? parseInt(req.query.albumId as string) : undefined;
       const userId = req.query.userId ? parseInt(req.query.userId as string) : req.user.id;
+      const uploadedOnly = req.query.uploaded === 'true';
 
-      // First, get media items directly uploaded by the user
+      if (uploadedOnly) {
+        // If uploaded=true, only get media directly uploaded by the user
+        const userMedia = await db.query.mediaItems.findMany({
+          where: albumId
+            ? and(
+                eq(mediaItems.userId, userId),
+                eq(mediaItems.albumId, albumId)
+              )
+            : eq(mediaItems.userId, userId),
+          with: {
+            tags: true,
+          },
+        });
+
+        return res.json(userMedia);
+      }
+
+      // Otherwise, get both uploaded and tagged media
       const userMedia = await db.query.mediaItems.findMany({
         where: albumId
           ? and(
@@ -241,7 +259,6 @@ export function registerRoutes(app: Express): Server {
         },
       });
 
-      // Then, get media items where the user is tagged
       const taggedMedia = await db.query.mediaTags.findMany({
         where: eq(mediaTags.userId, userId),
         with: {
@@ -263,15 +280,6 @@ export function registerRoutes(app: Express): Server {
       uniqueMedia.sort((a, b) =>
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
-
-      console.log('Fetched media items:', {
-        count: uniqueMedia.length,
-        items: uniqueMedia.map(item => ({
-          id: item.id,
-          type: item.type,
-          url: item.url
-        }))
-      });
 
       res.json(uniqueMedia);
     } catch (error) {
