@@ -228,13 +228,6 @@ export default function ProfilePage() {
               <SheetContent>
                 <nav className="flex flex-col gap-2 pt-4">
                   <Button 
-                    variant={view === null ? "default" : "ghost"}
-                    onClick={() => setView(null)}
-                    className="w-full"
-                  >
-                    Profile
-                  </Button>
-                  <Button 
                     variant={view === "gallery" ? "default" : "ghost"}
                     onClick={() => setView("gallery")}
                     className="w-full"
@@ -255,6 +248,13 @@ export default function ProfilePage() {
                   >
                     Family Tree
                   </Button>
+                  <Button 
+                    variant={view === null ? "default" : "ghost"}
+                    onClick={() => setView(null)}
+                    className="w-full"
+                  >
+                    Profile
+                  </Button>
                   {!isOwnProfile && (
                     <Link href="/profile">
                       <Button variant="ghost" className="w-full">
@@ -273,12 +273,6 @@ export default function ProfilePage() {
 
             <nav className="hidden md:flex items-center gap-2">
               <Button 
-                variant={view === null ? "default" : "ghost"}
-                onClick={() => setView(null)}
-              >
-                Profile
-              </Button>
-              <Button 
                 variant={view === "gallery" ? "default" : "ghost"}
                 onClick={() => setView("gallery")}
               >
@@ -295,6 +289,12 @@ export default function ProfilePage() {
                 onClick={() => setView("tree")}
               >
                 Family Tree
+              </Button>
+              <Button 
+                variant={view === null ? "default" : "ghost"}
+                onClick={() => setView(null)}
+              >
+                Profile
               </Button>
               {!isOwnProfile && (
                 <Link href="/profile">
