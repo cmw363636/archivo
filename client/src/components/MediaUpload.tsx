@@ -18,9 +18,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Upload } from "lucide-react";
+import { Loader2, Upload, CalendarIcon } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 
 interface Album {
   id: number;
@@ -39,6 +43,7 @@ export default function MediaUpload() {
   const [content, setContent] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [selectedAlbumId, setSelectedAlbumId] = useState<string>("");
+  const [mediaDate, setMediaDate] = useState<Date | undefined>(undefined);
 
   const { data: albums = [] } = useQuery<Album[]>({
     queryKey: ["/api/albums"],
@@ -62,6 +67,9 @@ export default function MediaUpload() {
     if (description.trim()) formData.append("description", description);
     if (selectedAlbumId && selectedAlbumId !== "none") {
       formData.append("albumId", selectedAlbumId);
+    }
+    if (mediaDate) {
+      formData.append("mediaDate", mediaDate.toISOString());
     }
 
     if (type === "post") {
@@ -93,6 +101,7 @@ export default function MediaUpload() {
     setContent("");
     setFile(null);
     setSelectedAlbumId("");
+    setMediaDate(undefined);
   };
 
   const getAcceptTypes = (type: string) => {
@@ -191,6 +200,32 @@ export default function MediaUpload() {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="date">Date (optional)</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={"outline"}
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !mediaDate && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {mediaDate ? format(mediaDate, "PPP") : <span>Pick a date</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={mediaDate}
+                  onSelect={setMediaDate}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
           </div>
 
           {type === "post" ? (
