@@ -316,7 +316,7 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
     const memberNodes: JSX.Element[] = [];
     const relationLines: JSX.Element[] = [];
 
-    // Position parents above
+    // Position parents above (keep as is, just arrows)
     if (familyGroups.parent) {
       const parentWidth = horizontalSpacing * (familyGroups.parent.length - 1);
       familyGroups.parent.forEach((parent, i) => {
@@ -324,38 +324,27 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
         const y = centerY - verticalSpacing;
 
         memberNodes.push(
-          <TooltipProvider key={`tooltip-${parent.id}`} delayDuration={0}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <g
-                  key={parent.id}
-                  transform={`translate(${x},${y})`}
-                  onClick={(e) => handleNodeClick(e, parent.id)}
-                  onMouseEnter={() => setHoveredMember(parent)}
-                  onMouseLeave={() => setHoveredMember(null)}
-                  style={{ cursor: 'pointer' }}
-                >
-                  <circle
-                    r={nodeRadius}
-                    fill="hsl(var(--secondary))"
-                    className="stroke-2 stroke-white"
-                  />
-                  <text
-                    textAnchor="middle"
-                    dy=".3em"
-                    fill="hsl(var(--secondary-foreground))"
-                    className="text-sm font-medium"
-                    pointerEvents="none"
-                  >
-                    {parent.displayName || parent.username}
-                  </text>
-                </g>
-              </TooltipTrigger>
-              <TooltipContent side="top" className="bg-white px-3 py-1.5 text-sm shadow-md">
-                {getRelationship(parent.id)}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <g
+            key={parent.id}
+            transform={`translate(${x},${y})`}
+            onClick={(e) => handleNodeClick(e, parent.id)}
+            style={{ cursor: 'pointer' }}
+          >
+            <circle
+              r={nodeRadius}
+              fill="hsl(var(--secondary))"
+              className="stroke-2 stroke-white"
+            />
+            <text
+              textAnchor="middle"
+              dy=".3em"
+              fill="hsl(var(--secondary-foreground))"
+              className="text-sm font-medium"
+              pointerEvents="none"
+            >
+              {parent.displayName || parent.username}
+            </text>
+          </g>
         );
 
         relationLines.push(
@@ -374,7 +363,7 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
       });
     }
 
-    // Position children below
+    // Position children below (keep as is, just arrows)
     if (familyGroups.child) {
       const childWidth = horizontalSpacing * (familyGroups.child.length - 1);
       familyGroups.child.forEach((child, i) => {
@@ -382,38 +371,27 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
         const y = centerY + verticalSpacing;
 
         memberNodes.push(
-          <TooltipProvider key={`tooltip-${child.id}`} delayDuration={0}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <g
-                  key={child.id}
-                  transform={`translate(${x},${y})`}
-                  onClick={(e) => handleNodeClick(e, child.id)}
-                  onMouseEnter={() => setHoveredMember(child)}
-                  onMouseLeave={() => setHoveredMember(null)}
-                  style={{ cursor: 'pointer' }}
-                >
-                  <circle
-                    r={nodeRadius}
-                    fill="hsl(var(--secondary))"
-                    className="stroke-2 stroke-white"
-                  />
-                  <text
-                    textAnchor="middle"
-                    dy=".3em"
-                    fill="hsl(var(--secondary-foreground))"
-                    className="text-sm font-medium"
-                    pointerEvents="none"
-                  >
-                    {child.displayName || child.username}
-                  </text>
-                </g>
-              </TooltipTrigger>
-              <TooltipContent side="top" className="bg-white px-3 py-1.5 text-sm shadow-md">
-                {getRelationship(child.id)}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <g
+            key={child.id}
+            transform={`translate(${x},${y})`}
+            onClick={(e) => handleNodeClick(e, child.id)}
+            style={{ cursor: 'pointer' }}
+          >
+            <circle
+              r={nodeRadius}
+              fill="hsl(var(--secondary))"
+              className="stroke-2 stroke-white"
+            />
+            <text
+              textAnchor="middle"
+              dy=".3em"
+              fill="hsl(var(--secondary-foreground))"
+              className="text-sm font-medium"
+              pointerEvents="none"
+            >
+              {child.displayName || child.username}
+            </text>
+          </g>
         );
 
         relationLines.push(
@@ -432,116 +410,118 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
       });
     }
 
-    // Position spouse to the left
+    // Position spouse to the left (with relationship text)
     if (familyGroups.spouse) {
       familyGroups.spouse.forEach((spouse, i) => {
         const x = centerX - horizontalSpacing;
         const y = centerY;
 
         memberNodes.push(
-          <TooltipProvider key={`tooltip-${spouse.id}`} delayDuration={0}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <g
-                  key={spouse.id}
-                  transform={`translate(${x},${y})`}
-                  onClick={(e) => handleNodeClick(e, spouse.id)}
-                  onMouseEnter={() => setHoveredMember(spouse)}
-                  onMouseLeave={() => setHoveredMember(null)}
-                  style={{ cursor: 'pointer' }}
-                >
-                  <circle
-                    r={nodeRadius}
-                    fill="hsl(var(--secondary))"
-                    className="stroke-2 stroke-white"
-                  />
-                  <text
-                    textAnchor="middle"
-                    dy=".3em"
-                    fill="hsl(var(--secondary-foreground))"
-                    className="text-sm font-medium"
-                    pointerEvents="none"
-                  >
-                    {spouse.displayName || spouse.username}
-                  </text>
-                </g>
-              </TooltipTrigger>
-              <TooltipContent side="top" className="bg-white px-3 py-1.5 text-sm shadow-md">
-                {getRelationship(spouse.id)}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <g
+            key={spouse.id}
+            transform={`translate(${x},${y})`}
+            onClick={(e) => handleNodeClick(e, spouse.id)}
+            style={{ cursor: 'pointer' }}
+          >
+            <circle
+              r={nodeRadius}
+              fill="hsl(var(--secondary))"
+              className="stroke-2 stroke-white"
+            />
+            <text
+              textAnchor="middle"
+              dy=".3em"
+              fill="hsl(var(--secondary-foreground))"
+              className="text-sm font-medium"
+              pointerEvents="none"
+            >
+              {spouse.displayName || spouse.username}
+            </text>
+          </g>
         );
 
+        // Add line with "Spouse" text
         relationLines.push(
-          <line
-            key={`line-spouse-${spouse.id}`}
-            x1={x + nodeRadius}
-            y1={y}
-            x2={centerX - nodeRadius}
-            y2={centerY}
-            stroke="hsl(var(--border))"
-            strokeWidth="2"
-            markerEnd="url(#arrowhead)"
-            pointerEvents="none"
-          />
+          <g key={`line-spouse-${spouse.id}`}>
+            <line
+              x1={x + nodeRadius}
+              y1={y}
+              x2={centerX - nodeRadius}
+              y2={centerY}
+              stroke="hsl(var(--border))"
+              strokeWidth="2"
+              markerEnd="url(#arrowhead)"
+              pointerEvents="none"
+            />
+            <text
+              x={(x + centerX) / 2}
+              y={y - 10}
+              textAnchor="middle"
+              fill="hsl(var(--muted-foreground))"
+              className="text-xs"
+              pointerEvents="none"
+            >
+              Spouse
+            </text>
+          </g>
         );
       });
     }
 
-    // Position siblings to the right
+    // Position siblings to the right (with relationship text)
     if (familyGroups.sibling) {
       familyGroups.sibling.forEach((sibling, i) => {
         const x = centerX + horizontalSpacing;
         const y = centerY;
 
         memberNodes.push(
-          <TooltipProvider key={`tooltip-${sibling.id}`} delayDuration={0}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <g
-                  key={sibling.id}
-                  transform={`translate(${x},${y})`}
-                  onClick={(e) => handleNodeClick(e, sibling.id)}
-                  onMouseEnter={() => setHoveredMember(sibling)}
-                  onMouseLeave={() => setHoveredMember(null)}
-                  style={{ cursor: 'pointer' }}
-                >
-                  <circle
-                    r={nodeRadius}
-                    fill="hsl(var(--secondary))"
-                    className="stroke-2 stroke-white"
-                  />
-                  <text
-                    textAnchor="middle"
-                    dy=".3em"
-                    fill="hsl(var(--secondary-foreground))"
-                    className="text-sm font-medium"
-                    pointerEvents="none"
-                  >
-                    {sibling.displayName || sibling.username}
-                  </text>
-                </g>
-              </TooltipTrigger>
-              <TooltipContent side="top" className="bg-white px-3 py-1.5 text-sm shadow-md">
-                {getRelationship(sibling.id)}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <g
+            key={sibling.id}
+            transform={`translate(${x},${y})`}
+            onClick={(e) => handleNodeClick(e, sibling.id)}
+            style={{ cursor: 'pointer' }}
+          >
+            <circle
+              r={nodeRadius}
+              fill="hsl(var(--secondary))"
+              className="stroke-2 stroke-white"
+            />
+            <text
+              textAnchor="middle"
+              dy=".3em"
+              fill="hsl(var(--secondary-foreground))"
+              className="text-sm font-medium"
+              pointerEvents="none"
+            >
+              {sibling.displayName || sibling.username}
+            </text>
+          </g>
         );
 
+        // Add line with "Sibling" text
         relationLines.push(
-          <line
-            key={`line-sibling-${sibling.id}`}
-            x1={centerX + nodeRadius}
-            y1={centerY}
-            x2={x - nodeRadius}
-            y2={y}
-            stroke="hsl(var(--border))"
-            strokeWidth="2"
-            markerEnd="url(#arrowhead)"
-            pointerEvents="none"
-          />
+          <g key={`line-sibling-${sibling.id}`}>
+            <line
+              x1={centerX + nodeRadius}
+              y1={centerY}
+              x2={x - nodeRadius}
+              y2={y}
+              stroke="hsl(var(--border))"
+              strokeWidth="2"
+              markerEnd="url(#arrowhead)"
+              pointerEvents="none"
+            />
+            <text
+              x={(x + centerX) / 2}
+              y={y - 10}
+              textAnchor="middle"
+              fill="hsl(var(--muted-foreground))"
+              className="text-xs"
+              pointerEvents="none"
+            >
+              Sibling
+            </text>
+          </g>
         );
       });
     }
@@ -602,7 +582,6 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
         </CardContent>
       </Card>
 
-      {/* Member Details Dialog */}
       <Dialog
         open={selectedMember !== null}
         onOpenChange={(open) => !open && setSelectedMember(null)}
@@ -645,7 +624,6 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
         </DialogContent>
       </Dialog>
 
-      {/* Add Relation Dialog */}
       <Dialog
         open={isAddingRelation}
         onOpenChange={(open) => {
