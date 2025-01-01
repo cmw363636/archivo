@@ -58,15 +58,15 @@ export default function MediaUpload() {
 
     const formData = new FormData();
     formData.append("type", type);
-    formData.append("title", title);
-    formData.append("description", description);
+    if (title.trim()) formData.append("title", title);
+    if (description.trim()) formData.append("description", description);
     if (selectedAlbumId && selectedAlbumId !== "none") {
       formData.append("albumId", selectedAlbumId);
     }
 
     if (type === "post") {
-      formData.append("websiteUrl", websiteUrl);
-      formData.append("content", content);
+      if (websiteUrl.trim()) formData.append("websiteUrl", websiteUrl);
+      if (content.trim()) formData.append("content", content);
       // For posts, we don't require a file
       if (file) {
         formData.append("file", file);
@@ -185,24 +185,22 @@ export default function MediaUpload() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="title">Title</Label>
+            <Label htmlFor="title">Title (optional)</Label>
             <Input
               id="title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              required
             />
           </div>
 
           {type === "post" ? (
             <>
               <div className="space-y-2">
-                <Label htmlFor="content">Content</Label>
+                <Label htmlFor="content">Content (optional)</Label>
                 <Textarea
                   id="content"
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
-                  required
                   className="min-h-[100px]"
                 />
               </div>
@@ -232,7 +230,7 @@ export default function MediaUpload() {
           ) : (
             <>
               <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
+                <Label htmlFor="description">Description (optional)</Label>
                 <Textarea
                   id="description"
                   value={description}
