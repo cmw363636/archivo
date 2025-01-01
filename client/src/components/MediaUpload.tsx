@@ -225,7 +225,6 @@ export default function MediaUpload() {
                   type="file"
                   onChange={handleFileChange}
                   accept="image/*"
-                  capture="environment"
                   className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
                 />
               </div>
@@ -248,7 +247,7 @@ export default function MediaUpload() {
                   type="file"
                   onChange={handleFileChange}
                   accept={getAcceptTypes(type)}
-                  capture={type === "photo" ? "environment" : undefined}
+                  capture={type === "video" ? "environment" : undefined}
                   required
                   className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
                 />
