@@ -228,7 +228,8 @@ export function registerRoutes(app: Express): Server {
       const albumId = req.query.albumId ? parseInt(req.query.albumId as string) : undefined;
       const userId = req.query.userId ? parseInt(req.query.userId as string) : req.user.id;
 
-      const items = await db.query.mediaItems.findMany({
+      // First, get media items directly uploaded by the user
+      const userMedia = await db.query.mediaItems.findMany({
         where: albumId
           ? and(
               eq(mediaItems.userId, userId),
@@ -238,19 +239,41 @@ export function registerRoutes(app: Express): Server {
         with: {
           tags: true,
         },
-        orderBy: (mediaItems, { desc }) => [desc(mediaItems.createdAt)],
       });
 
+      // Then, get media items where the user is tagged
+      const taggedMedia = await db.query.mediaTags.findMany({
+        where: eq(mediaTags.userId, userId),
+        with: {
+          mediaItem: {
+            with: {
+              tags: true,
+              user: true,
+            },
+          },
+        },
+      });
+
+      // Combine and deduplicate the results
+      const taggedMediaItems = taggedMedia.map(tag => tag.mediaItem);
+      const allMedia = [...userMedia, ...taggedMediaItems];
+      const uniqueMedia = Array.from(new Map(allMedia.map(item => [item.id, item])).values());
+
+      // Sort by creation date
+      uniqueMedia.sort((a, b) => 
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+
       console.log('Fetched media items:', {
-        count: items.length,
-        items: items.map(item => ({
+        count: uniqueMedia.length,
+        items: uniqueMedia.map(item => ({
           id: item.id,
           type: item.type,
           url: item.url
         }))
       });
 
-      res.json(items);
+      res.json(uniqueMedia);
     } catch (error) {
       console.error('Error fetching media items:', error);
       res.status(500).send("Error fetching media items");
