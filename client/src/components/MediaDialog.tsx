@@ -1,13 +1,16 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Link2, Trash2, UserPlus, FolderPlus, X } from "lucide-react";
+import { Link2, Trash2, UserPlus, FolderPlus, X, Pencil } from "lucide-react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import type { MediaItem } from "@db/schema";
 import TagUsers from "./TagUsers";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import React from 'react';
 
 interface MediaDialogProps {
   media: MediaItem | null;
@@ -20,10 +23,56 @@ export function MediaDialog({ media, open, onOpenChange }: MediaDialogProps) {
   const { toast } = useToast();
   const [isTagModalOpen, setIsTagModalOpen] = useState(false);
   const [isAddToAlbumOpen, setIsAddToAlbumOpen] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
+  const [editDescription, setEditDescription] = useState("");
   const [selectedAlbumId, setSelectedAlbumId] = useState<string>("");
 
   const { data: albums = [] } = useQuery<any[]>({
     queryKey: ["/api/albums"],
+  });
+
+  // Reset edit form when media changes
+  useEffect(() => {
+    if (media) {
+      setEditTitle(media.title || "");
+      setEditDescription(media.description || "");
+    }
+  }, [media]);
+
+  const editMutation = useMutation({
+    mutationFn: async ({ mediaId, title, description }: { mediaId: number; title?: string; description?: string }) => {
+      const response = await fetch(`/api/media/${mediaId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ title, description }),
+      });
+
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/media'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/media/tagged'] });
+      setIsEditMode(false);
+      toast({
+        title: "Success",
+        description: "Media updated successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
   });
 
   const deleteMutation = useMutation({
@@ -125,6 +174,16 @@ export function MediaDialog({ media, open, onOpenChange }: MediaDialogProps) {
     }
   };
 
+  const handleEdit = () => {
+    if (!media) return;
+
+    editMutation.mutate({
+      mediaId: media.id,
+      title: editTitle.trim(),
+      description: editDescription.trim() || null,
+    });
+  };
+
   const handleAddToAlbum = () => {
     if (!media || !selectedAlbumId) return;
 
@@ -160,34 +219,69 @@ export function MediaDialog({ media, open, onOpenChange }: MediaDialogProps) {
       <DialogContent className="max-w-4xl">
         <DialogHeader className="mb-4">
           <div className="flex items-center justify-between pr-12">
-            <DialogTitle>{media.title}</DialogTitle>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => setIsTagModalOpen(true)}
-                className="h-8 w-8"
-              >
-                <UserPlus className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => setIsAddToAlbumOpen(true)}
-                className="h-8 w-8"
-              >
-                <FolderPlus className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="destructive"
-                size="icon"
-                onClick={handleDelete}
-                disabled={deleteMutation.isPending}
-                className="h-8 w-8"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
+            {isEditMode ? (
+              <div className="flex-1 mr-4">
+                <Input
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  placeholder="Enter title"
+                  className="mb-2"
+                />
+                <Textarea
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  placeholder="Enter description"
+                  rows={3}
+                />
+                <div className="flex gap-2 mt-2">
+                  <Button onClick={handleEdit} disabled={editMutation.isPending}>
+                    Save
+                  </Button>
+                  <Button variant="ghost" onClick={() => setIsEditMode(false)}>
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <DialogTitle>{media.title}</DialogTitle>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setIsEditMode(true)}
+                    className="h-8 w-8"
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setIsTagModalOpen(true)}
+                    className="h-8 w-8"
+                  >
+                    <UserPlus className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setIsAddToAlbumOpen(true)}
+                    className="h-8 w-8"
+                  >
+                    <FolderPlus className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="icon"
+                    onClick={handleDelete}
+                    disabled={deleteMutation.isPending}
+                    className="h-8 w-8"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </>
+            )}
           </div>
         </DialogHeader>
         <Card>
@@ -221,24 +315,28 @@ export function MediaDialog({ media, open, onOpenChange }: MediaDialogProps) {
               />
             )}
             <div className="mt-4">
-              {media.description && (
-                <p className="mt-2 text-muted-foreground">{media.description}</p>
-              )}
-              {media.type === "post" && media.website_url && (
-                <div className="mt-1 flex items-center gap-1 text-sm text-primary">
-                  <Link2 className="h-3 w-3" />
-                  <a
-                    href={media.website_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="hover:underline"
-                  >
-                    Visit Website
-                  </a>
-                </div>
-              )}
-              {media.type === "post" && media.content && (
-                <p className="mt-4 whitespace-pre-wrap">{media.content}</p>
+              {!isEditMode && (
+                <>
+                  {media.description && (
+                    <p className="mt-2 text-muted-foreground">{media.description}</p>
+                  )}
+                  {media.type === "post" && media.website_url && (
+                    <div className="mt-1 flex items-center gap-1 text-sm text-primary">
+                      <Link2 className="h-3 w-3" />
+                      <a
+                        href={media.website_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="hover:underline"
+                      >
+                        Visit Website
+                      </a>
+                    </div>
+                  )}
+                  {media.type === "post" && media.content && (
+                    <p className="mt-4 whitespace-pre-wrap">{media.content}</p>
+                  )}
+                </>
               )}
 
               {/* Current Album Section */}

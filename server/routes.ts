@@ -327,6 +327,49 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Add media update endpoint
+  app.patch("/api/media/:mediaId", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const { mediaId } = req.params;
+    const { title, description } = req.body;
+
+    try {
+      // Check if the media item exists and belongs to the user
+      const [mediaItem] = await db
+        .select()
+        .from(mediaItems)
+        .where(
+          and(
+            eq(mediaItems.id, parseInt(mediaId)),
+            eq(mediaItems.userId, req.user.id)
+          )
+        )
+        .limit(1);
+
+      if (!mediaItem) {
+        return res.status(404).send("Media item not found or unauthorized");
+      }
+
+      // Update the media item
+      const [updatedItem] = await db
+        .update(mediaItems)
+        .set({
+          title: title?.trim() || mediaItem.title,
+          description: description?.trim() || null,
+        })
+        .where(eq(mediaItems.id, parseInt(mediaId)))
+        .returning();
+
+      res.json(updatedItem);
+    } catch (error) {
+      console.error('Error updating media:', error);
+      res.status(500).send("Error updating media");
+    }
+  });
+
   // Add media delete endpoint
   app.delete("/api/media/:mediaId", async (req, res) => {
     if (!req.isAuthenticated()) {
