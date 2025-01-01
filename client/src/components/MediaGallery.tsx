@@ -213,10 +213,12 @@ export function MediaGallery({ albumId }: MediaGalleryProps) {
         {filteredItems.map((item) => (
           <Card key={item.id} className="cursor-pointer hover:bg-accent/5 transition-colors" onClick={() => setSelectedMedia(item as MediaItem)}>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <MediaIcon type={item.type} />
-                {item.title}
-              </CardTitle>
+              {item.title && (
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <MediaIcon type={item.type} />
+                  {item.title}
+                </CardTitle>
+              )}
             </CardHeader>
             <CardContent>
               {renderMediaPreview(item)}
