@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Link, useLocation, useNavigate } from "wouter";
+import { Link, useLocation } from "wouter";
 import {
   Card,
   CardContent,
@@ -239,8 +239,8 @@ export default function FamilyTree() {
     const familyGroups = relations.reduce((acc, relation) => {
       const isFromUser = relation.fromUserId === user.id;
       const member = isFromUser ? relation.toUser : relation.fromUser;
-      const type = isFromUser 
-        ? relation.relationType 
+      const type = isFromUser
+        ? relation.relationType
         : relationTypeMap[relation.relationType as keyof typeof relationTypeMap];
 
       if (!acc[type]) {
@@ -254,8 +254,8 @@ export default function FamilyTree() {
 
     // Position current user at center
     const userNode = (
-      <g 
-        key={user.id} 
+      <g
+        key={user.id}
         transform={`translate(${centerX},${centerY})`}
         onClick={(e) => handleNodeClick(e, user.id)}
         style={{ cursor: 'pointer' }}
