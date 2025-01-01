@@ -30,6 +30,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus, Users, Image, Eye, Trash2 } from "lucide-react";
 import type { User } from "@db/schema";
 import { MediaGallery } from "./MediaGallery";
+import { useUser } from "../hooks/use-user";
 
 interface Album {
   id: number;
@@ -60,6 +61,7 @@ type NewMemberData = {
 };
 
 export default function AlbumManager() {
+  const { user } = useUser();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -76,8 +78,19 @@ export default function AlbumManager() {
     canEdit: false,
   });
 
+  // Updated query to fetch both created and member albums
   const { data: albums = [], isLoading } = useQuery<Album[]>({
-    queryKey: ["/api/albums"],
+    queryKey: ["/api/albums", user?.id],
+    queryFn: async () => {
+      const response = await fetch(`/api/albums?userId=${user?.id}`, {
+        credentials: 'include'
+      });
+      if (!response.ok) {
+        throw new Error('Failed to fetch albums');
+      }
+      return response.json();
+    },
+    enabled: !!user?.id
   });
 
   const { data: users = [] } = useQuery<User[]>({
@@ -98,7 +111,7 @@ export default function AlbumManager() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/albums"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/albums", user?.id] });
       toast({
         title: "Success",
         description: "Member removed successfully",
@@ -129,7 +142,7 @@ export default function AlbumManager() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/albums"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/albums", user?.id] });
       setIsCreateOpen(false);
       setNewAlbumData({ name: "", description: "", isShared: false });
       toast({
@@ -168,7 +181,7 @@ export default function AlbumManager() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/albums"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/albums", user?.id] });
       setIsAddMemberOpen(false);
       setNewMemberData({ userId: null, canEdit: false });
       toast({
@@ -199,7 +212,7 @@ export default function AlbumManager() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/albums"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/albums", user?.id] });
       toast({
         title: "Success",
         description: "Album deleted successfully",
@@ -258,7 +271,6 @@ export default function AlbumManager() {
     return creator?.displayName || creator?.username || 'Unknown User';
   };
 
-  const user = users.find(u => u.id === 1) //replace 1 with actual user id logic
 
   return (
     <div className="space-y-4">

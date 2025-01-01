@@ -54,12 +54,12 @@ export default function TaggedMediaPage() {
                       Media Gallery
                     </Button>
                   </Link>
-                  <Link href="/">
+                  <Link href="/albums">
                     <Button variant="ghost" className="w-full">
                       Albums
                     </Button>
                   </Link>
-                  <Link href="/">
+                  <Link href="/family">
                     <Button variant="ghost" className="w-full">
                       Family Tree
                     </Button>
@@ -80,10 +80,10 @@ export default function TaggedMediaPage() {
               <Link href="/">
                 <Button variant="ghost">Media Gallery</Button>
               </Link>
-              <Link href="/">
+              <Link href="/albums">
                 <Button variant="ghost">Albums</Button>
               </Link>
-              <Link href="/">
+              <Link href="/family">
                 <Button variant="ghost">Family Tree</Button>
               </Link>
               <Link href="/profile">
@@ -100,7 +100,7 @@ export default function TaggedMediaPage() {
       <main className="container mx-auto px-4 py-8">
         <Card>
           <CardHeader>
-            <CardTitle>All Tagged Media</CardTitle>
+            <CardTitle>Tagged Media</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">

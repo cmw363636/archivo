@@ -258,6 +258,36 @@ export function registerRoutes(app: Express): Server {
   });
 
 
+  // Add new endpoint to fetch media where user is tagged
+  app.get("/api/media/tagged", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const userId = req.query.userId ? parseInt(req.query.userId as string) : req.user.id;
+
+    try {
+      const taggedMedia = await db.query.mediaTags.findMany({
+        where: eq(mediaTags.userId, userId),
+        with: {
+          mediaItem: {
+            with: {
+              user: true,
+            },
+          },
+        },
+      });
+
+      // Transform the response to match the MediaItem type
+      const mediaItems = taggedMedia.map(tag => tag.mediaItem);
+
+      res.json(mediaItems);
+    } catch (error) {
+      console.error('Error fetching tagged media:', error);
+      res.status(500).send("Error fetching tagged media");
+    }
+  });
+
   // Add media delete endpoint
   app.delete("/api/media/:mediaId", async (req, res) => {
     if (!req.isAuthenticated()) {
