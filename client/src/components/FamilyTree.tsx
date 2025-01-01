@@ -90,7 +90,7 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
   const getRelationship = (hoveredMemberId: number) => {
     if (!user) return null;
 
-    const relation = relations.find(r => 
+    const relation = relations.find(r =>
       (r.fromUserId === user.id && r.toUserId === hoveredMemberId) ||
       (r.fromUserId === hoveredMemberId && r.toUserId === user.id)
     );
@@ -98,10 +98,14 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
     if (!relation) return null;
 
     if (relation.fromUserId === user.id) {
-      return `Your ${relation.relationType}`;
+      return relation.relationType === 'spouse'
+        ? 'Your spouse'
+        : `Your ${relation.relationType}`;
     } else {
       const inverseRelation = relationTypeMap[relation.relationType];
-      return `Your ${inverseRelation}`;
+      return inverseRelation === 'spouse'
+        ? 'Your spouse'
+        : `Your ${inverseRelation}`;
     }
   };
 
@@ -320,7 +324,7 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
         const y = centerY - verticalSpacing;
 
         memberNodes.push(
-          <TooltipProvider key={`tooltip-${parent.id}`}>
+          <TooltipProvider key={`tooltip-${parent.id}`} delayDuration={0}>
             <Tooltip>
               <TooltipTrigger asChild>
                 <g
@@ -347,8 +351,8 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
                   </text>
                 </g>
               </TooltipTrigger>
-              <TooltipContent>
-                <p>{getRelationship(parent.id)}</p>
+              <TooltipContent side="top" className="bg-white px-3 py-1.5 text-sm shadow-md">
+                {getRelationship(parent.id)}
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -378,7 +382,7 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
         const y = centerY + verticalSpacing;
 
         memberNodes.push(
-          <TooltipProvider key={`tooltip-${child.id}`}>
+          <TooltipProvider key={`tooltip-${child.id}`} delayDuration={0}>
             <Tooltip>
               <TooltipTrigger asChild>
                 <g
@@ -405,8 +409,8 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
                   </text>
                 </g>
               </TooltipTrigger>
-              <TooltipContent>
-                <p>{getRelationship(child.id)}</p>
+              <TooltipContent side="top" className="bg-white px-3 py-1.5 text-sm shadow-md">
+                {getRelationship(child.id)}
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -435,7 +439,7 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
         const y = centerY;
 
         memberNodes.push(
-          <TooltipProvider key={`tooltip-${spouse.id}`}>
+          <TooltipProvider key={`tooltip-${spouse.id}`} delayDuration={0}>
             <Tooltip>
               <TooltipTrigger asChild>
                 <g
@@ -462,8 +466,8 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
                   </text>
                 </g>
               </TooltipTrigger>
-              <TooltipContent>
-                <p>{getRelationship(spouse.id)}</p>
+              <TooltipContent side="top" className="bg-white px-3 py-1.5 text-sm shadow-md">
+                {getRelationship(spouse.id)}
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -492,7 +496,7 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
         const y = centerY;
 
         memberNodes.push(
-          <TooltipProvider key={`tooltip-${sibling.id}`}>
+          <TooltipProvider key={`tooltip-${sibling.id}`} delayDuration={0}>
             <Tooltip>
               <TooltipTrigger asChild>
                 <g
@@ -519,8 +523,8 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
                   </text>
                 </g>
               </TooltipTrigger>
-              <TooltipContent>
-                <p>{getRelationship(sibling.id)}</p>
+              <TooltipContent side="top" className="bg-white px-3 py-1.5 text-sm shadow-md">
+                {getRelationship(sibling.id)}
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
