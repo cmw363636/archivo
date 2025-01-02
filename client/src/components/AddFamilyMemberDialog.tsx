@@ -135,6 +135,7 @@ export function AddFamilyMemberDialog({ open, onOpenChange, forUserId }: Props) 
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            {/* Relation Type - Always visible regardless of mode */}
             <FormField
               control={form.control}
               name="relationType"
