@@ -20,8 +20,7 @@ import AlbumManager from "../components/AlbumManager";
 export default function ProfilePage() {
   const { user, logout } = useUser();
   const params = useParams();
-  const [, setLocation] = useLocation();
-  const [view, setView] = useState<"gallery" | "tree" | "albums" | null>(null);
+  const [location, setLocation] = useLocation();
   const [selectedMedia, setSelectedMedia] = useState<MediaItem | null>(null);
 
   // Get userId from URL params or fall back to current user's ID
@@ -75,177 +74,169 @@ export default function ProfilePage() {
     }
   };
 
-  // Handle navigation
-  const handleNavigation = (newView: "gallery" | "tree" | "albums" | null) => {
-    if (newView === "gallery") {
-      setLocation("/");
-    } else if (newView === "albums") {
-      setLocation("/albums");
-    } else if (newView === "tree") {
-      setLocation("/family");
-    }
-    setView(newView);
-  };
-
   if (!user || !displayUser) {
     return null;
   }
 
   const renderContent = () => {
-    switch (view) {
-      case "gallery":
-        return <MediaGallery />;
-      case "albums":
-        return <AlbumManager />;
-      case "tree":
-        return <FamilyTree onUserClick={(userId) => {
-          setLocation(`/profile/${userId}`);
-          setView(null);
-        }} />;
-      default:
-        return (
-          <div className="space-y-8">
-            {!isOwnProfile && (
-              <Button
-                variant="ghost"
-                className="flex items-center gap-2 text-[#7c6f9f] hover:text-[#7c6f9f]/80 -ml-2"
-                onClick={() => {
-                  setLocation("/family");
-                }}
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Back to Family Tree
-              </Button>
-            )}
-            <div className="grid gap-8 md:grid-cols-2">
-              {/* Profile Information */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Profile</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div>
-                      <h3 className="text-lg font-medium">Display Name</h3>
-                      <p className="text-muted-foreground">{displayUser.displayName}</p>
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-medium">Username</h3>
-                      <p className="text-muted-foreground">{displayUser.username}</p>
-                    </div>
-                    {isOwnProfile && (
-                      <UserProfileEditor />
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Uploaded Media */}
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
-                  <CardTitle>Uploaded Media</CardTitle>
-                  {uploadedMedia.length > 5 && (
-                    <Link href={`/profile/${userId}/uploaded`}>
-                      <Button variant="ghost">
-                        See All
-                      </Button>
-                    </Link>
-                  )}
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {uploadedMedia.slice(0, 5).length > 0 ? (
-                      uploadedMedia.slice(0, 5).map((media) => (
-                        <div
-                          key={media.id}
-                          className="flex items-center gap-4 p-2 rounded-lg hover:bg-accent cursor-pointer"
-                          onClick={() => setSelectedMedia(media)}
-                        >
-                          {media.type === 'photo' && media.url && (
-                            <img
-                              src={media.url}
-                              alt={media.title}
-                              className="w-16 h-16 object-cover rounded-md"
-                            />
-                          )}
-                          {media.type === 'post' && !media.url && (
-                            <div className="w-16 h-16 bg-muted flex items-center justify-center rounded-md">
-                              <span className="text-xs text-muted-foreground">Post</span>
-                            </div>
-                          )}
-                          <div className="flex-1">
-                            <h4 className="font-medium">{media.title}</h4>
-                            <p className="text-sm text-muted-foreground">
-                              {media.description}
-                            </p>
-                            {media.type === 'post' && media.website_url && (
-                              <div className="mt-1 flex items-center gap-1 text-sm text-primary">
-                                <Link2 className="h-3 w-3" />
-                                <span>{media.website_url}</span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="text-muted-foreground">No uploaded media</p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Tagged Media */}
-              <Card className="md:col-span-2">
-                <CardHeader className="flex flex-row items-center justify-between">
-                  <CardTitle>Tagged Media</CardTitle>
-                  {taggedMedia.length > 5 && (
-                    <Link href={`/profile/${userId}/tagged`}>
-                      <Button variant="ghost">
-                        See All
-                      </Button>
-                    </Link>
-                  )}
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {taggedMedia.slice(0, 5).length > 0 ? (
-                      taggedMedia.slice(0, 5).map((media) => (
-                        <div
-                          key={media.id}
-                          className="flex items-center gap-4 p-2 rounded-lg hover:bg-accent cursor-pointer"
-                          onClick={() => setSelectedMedia(media)}
-                        >
-                          {media.type === 'photo' && media.url && (
-                            <img
-                              src={media.url}
-                              alt={media.title}
-                              className="w-16 h-16 object-cover rounded-md"
-                            />
-                          )}
-                          <div className="flex-1">
-                            <h4 className="font-medium">{media.title}</h4>
-                            <p className="text-sm text-muted-foreground">
-                              {media.description}
-                            </p>
-                            {media.type === 'post' && media.website_url && (
-                              <div className="mt-1 flex items-center gap-1 text-sm text-primary">
-                                <Link2 className="h-3 w-3" />
-                                <span>{media.website_url}</span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="text-muted-foreground">No tagged media</p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        );
+    // Use location to determine what to render
+    if (location === "/") {
+      return <MediaGallery />;
     }
+    if (location === "/albums") {
+      return <AlbumManager />;
+    }
+    if (location === "/family") {
+      return (
+        <FamilyTree
+          onUserClick={(userId) => {
+            setLocation(`/profile/${userId}`);
+          }}
+        />
+      );
+    }
+
+    // Default profile content
+    return (
+      <div className="space-y-8">
+        {!isOwnProfile && (
+          <Button
+            variant="ghost"
+            className="flex items-center gap-2 text-[#7c6f9f] hover:text-[#7c6f9f]/80 -ml-2"
+            onClick={() => setLocation("/family")}
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Family Tree
+          </Button>
+        )}
+        <div className="grid gap-8 md:grid-cols-2">
+          {/* Profile Information */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Profile</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-lg font-medium">Display Name</h3>
+                  <p className="text-muted-foreground">{displayUser.displayName}</p>
+                </div>
+                <div>
+                  <h3 className="text-lg font-medium">Username</h3>
+                  <p className="text-muted-foreground">{displayUser.username}</p>
+                </div>
+                {isOwnProfile && (
+                  <UserProfileEditor />
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Uploaded Media */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Uploaded Media</CardTitle>
+              {uploadedMedia.length > 5 && (
+                <Link href={`/profile/${userId}/uploaded`}>
+                  <Button variant="ghost">
+                    See All
+                  </Button>
+                </Link>
+              )}
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {uploadedMedia.slice(0, 5).length > 0 ? (
+                  uploadedMedia.slice(0, 5).map((media) => (
+                    <div
+                      key={media.id}
+                      className="flex items-center gap-4 p-2 rounded-lg hover:bg-accent cursor-pointer"
+                      onClick={() => setSelectedMedia(media)}
+                    >
+                      {media.type === 'photo' && media.url && (
+                        <img
+                          src={media.url}
+                          alt={media.title}
+                          className="w-16 h-16 object-cover rounded-md"
+                        />
+                      )}
+                      {media.type === 'post' && !media.url && (
+                        <div className="w-16 h-16 bg-muted flex items-center justify-center rounded-md">
+                          <span className="text-xs text-muted-foreground">Post</span>
+                        </div>
+                      )}
+                      <div className="flex-1">
+                        <h4 className="font-medium">{media.title}</h4>
+                        <p className="text-sm text-muted-foreground">
+                          {media.description}
+                        </p>
+                        {media.type === 'post' && media.website_url && (
+                          <div className="mt-1 flex items-center gap-1 text-sm text-primary">
+                            <Link2 className="h-3 w-3" />
+                            <span>{media.website_url}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-muted-foreground">No uploaded media</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Tagged Media */}
+          <Card className="md:col-span-2">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Tagged Media</CardTitle>
+              {taggedMedia.length > 5 && (
+                <Link href={`/profile/${userId}/tagged`}>
+                  <Button variant="ghost">
+                    See All
+                  </Button>
+                </Link>
+              )}
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {taggedMedia.slice(0, 5).length > 0 ? (
+                  taggedMedia.slice(0, 5).map((media) => (
+                    <div
+                      key={media.id}
+                      className="flex items-center gap-4 p-2 rounded-lg hover:bg-accent cursor-pointer"
+                      onClick={() => setSelectedMedia(media)}
+                    >
+                      {media.type === 'photo' && media.url && (
+                        <img
+                          src={media.url}
+                          alt={media.title}
+                          className="w-16 h-16 object-cover rounded-md"
+                        />
+                      )}
+                      <div className="flex-1">
+                        <h4 className="font-medium">{media.title}</h4>
+                        <p className="text-sm text-muted-foreground">
+                          {media.description}
+                        </p>
+                        {media.type === 'post' && media.website_url && (
+                          <div className="mt-1 flex items-center gap-1 text-sm text-primary">
+                            <Link2 className="h-3 w-3" />
+                            <span>{media.website_url}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-muted-foreground">No tagged media</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -264,29 +255,29 @@ export default function ProfilePage() {
               <SheetContent>
                 <nav className="flex flex-col gap-2 pt-4">
                   <Button
-                    variant={view === "gallery" ? "default" : "ghost"}
+                    variant={location === "/" ? "default" : "ghost"}
                     className="w-full"
-                    onClick={() => handleNavigation("gallery")}
+                    onClick={() => setLocation("/")}
                   >
                     Media Gallery
                   </Button>
                   <Button
-                    variant={view === "albums" ? "default" : "ghost"}
+                    variant={location === "/albums" ? "default" : "ghost"}
                     className="w-full"
-                    onClick={() => handleNavigation("albums")}
+                    onClick={() => setLocation("/albums")}
                   >
                     Albums
                   </Button>
                   <Button
-                    variant={view === "tree" ? "default" : "ghost"}
+                    variant={location === "/family" ? "default" : "ghost"}
                     className="w-full"
-                    onClick={() => handleNavigation("tree")}
+                    onClick={() => setLocation("/family")}
                   >
                     Family Tree
                   </Button>
                   <Link href="/profile">
                     <Button
-                      variant={!view && isOwnProfile ? "default" : "ghost"}
+                      variant={location === "/profile" || (location.startsWith("/profile/") && isOwnProfile) ? "default" : "ghost"}
                       className="w-full"
                     >
                       Profile
@@ -301,26 +292,26 @@ export default function ProfilePage() {
 
             <nav className="hidden md:flex items-center gap-2">
               <Button
-                variant={view === "gallery" ? "default" : "ghost"}
-                onClick={() => handleNavigation("gallery")}
+                variant={location === "/" ? "default" : "ghost"}
+                onClick={() => setLocation("/")}
               >
                 Media Gallery
               </Button>
               <Button
-                variant={view === "albums" ? "default" : "ghost"}
-                onClick={() => handleNavigation("albums")}
+                variant={location === "/albums" ? "default" : "ghost"}
+                onClick={() => setLocation("/albums")}
               >
                 Albums
               </Button>
               <Button
-                variant={view === "tree" ? "default" : "ghost"}
-                onClick={() => handleNavigation("tree")}
+                variant={location === "/family" ? "default" : "ghost"}
+                onClick={() => setLocation("/family")}
               >
                 Family Tree
               </Button>
               <Link href="/profile">
                 <Button
-                  variant={!view && isOwnProfile ? "default" : "ghost"}
+                  variant={location === "/profile" || (location.startsWith("/profile/") && isOwnProfile) ? "default" : "ghost"}
                 >
                   Profile
                 </Button>
