@@ -9,6 +9,10 @@ import path from "path";
 import fs from "fs";
 import express from 'express';
 import mime from 'mime-types';
+import { scrypt, randomBytes, timingSafeEqual } from 'crypto';
+import { promisify } from 'util';
+
+const scryptAsync = promisify(scrypt);
 
 // Ensure uploads directory exists
 const uploadDir = path.join(process.cwd(), 'uploads');
@@ -830,6 +834,55 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Create new family member endpoint
+  app.post("/api/family/create-member", async (req, res) => {
+    try {
+      const { username, password, displayName, email, birthday } = req.body;
+
+      // Check if user already exists
+      const [existingUser] = await db
+        .select()
+        .from(users)
+        .where(eq(users.username, username))
+        .limit(1);
+
+      if (existingUser) {
+        return res.status(400).send("Username already exists");
+      }
+
+      // Hash the password using scrypt
+      const salt = randomBytes(16).toString("hex");
+      const buf = (await scryptAsync(password, salt, 64)) as Buffer;
+      const hashedPassword = `${buf.toString("hex")}.${salt}`;
+
+      // Create the new user without logging them in
+      const [newUser] = await db
+        .insert(users)
+        .values({
+          username,
+          password: hashedPassword,
+          displayName,
+          email,
+          dateOfBirth: birthday ? new Date(birthday) : null,
+        })
+        .returning();
+
+      // Return the new user info without logging them in
+      return res.json({
+        message: "Family member created successfully",
+        user: {
+          id: newUser.id,
+          username: newUser.username,
+          displayName: newUser.displayName,
+          email: newUser.email,
+        },
+      });
+    } catch (error) {
+      console.error('Error creating family member:', error);
+      res.status(500).send("Error creating family member");
+    }
+  });
+
   // Family relations endpoints
   app.get("/api/family", async (req, res) => {
     if (!req.isAuthenticated()) {
@@ -954,8 +1007,7 @@ export function registerRoutes(app: Express): Server {
   });
 
   app.delete("/api/family/:relationId", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).send("Not authenticated");
+    if (!req.isAuthenticated()) {      return res.status(401).send("Not authenticated");
     }
 
     const { relationId } = req.params;

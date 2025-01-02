@@ -255,7 +255,8 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
 
   const createUserAndRelationMutation = useMutation({
     mutationFn: async (data: NewUserFormData) => {
-      const userResponse = await fetch("/api/register", {
+      // Create new user using the family member endpoint
+      const userResponse = await fetch("/api/family/create-member", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -274,6 +275,7 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
 
       const { user: newUser } = await userResponse.json();
 
+      // Create the family relation
       const relationResponse = await fetch("/api/family", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
