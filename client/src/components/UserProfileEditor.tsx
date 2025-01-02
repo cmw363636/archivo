@@ -8,16 +8,29 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { format, isValid, parse } from "date-fns";
+import { useLocation } from "wouter";
 
 export function UserProfileEditor() {
-  const { user } = useUser();
+  const { user, deleteAccount } = useUser();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [, navigate] = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const [isEmailOpen, setIsEmailOpen] = useState(false);
   const [dateInput, setDateInput] = useState(
@@ -94,6 +107,15 @@ export function UserProfileEditor() {
     updateMutation.mutate({
       email: emailInput || null,
     });
+  };
+
+  const handleDeleteAccount = async () => {
+    try {
+      await deleteAccount();
+      navigate('/auth');
+    } catch (error) {
+      console.error('Failed to delete account:', error);
+    }
   };
 
   // Calculate age
@@ -179,6 +201,28 @@ export function UserProfileEditor() {
             </form>
           </DialogContent>
         </Dialog>
+      </div>
+
+      <div className="pt-6">
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button variant="destructive">Delete Account</Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. This will permanently delete your account and remove your data from our servers.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDeleteAccount}>
+                Delete Account
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   );

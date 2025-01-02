@@ -104,11 +104,41 @@ export function useUser() {
     },
   });
 
+  const deleteAccountMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch('/api/user', {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.setQueryData(['/api/user'], null);
+      toast({
+        title: "Success",
+        description: "Account deleted successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   return {
     user,
     isLoading,
     login: loginMutation.mutateAsync,
     logout: logoutMutation.mutateAsync,
     register: registerMutation.mutateAsync,
+    deleteAccount: deleteAccountMutation.mutateAsync,
   };
 }

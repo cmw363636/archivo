@@ -227,6 +227,33 @@ export function setupAuth(app: Express) {
     });
   });
 
+  app.delete("/api/user", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).send("Not logged in");
+      }
+
+      const userId = req.user.id;
+
+      // Delete the user from the database
+      await db
+        .delete(users)
+        .where(eq(users.id, userId));
+
+      // Log the user out
+      req.logout((err) => {
+        if (err) {
+          return res.status(500).send("Failed to logout after account deletion");
+        }
+
+        res.json({ message: "Account deleted successfully" });
+      });
+    } catch (error) {
+      console.error("Account deletion error:", error);
+      res.status(500).send("Failed to delete account");
+    }
+  });
+
   app.get("/api/user", (req, res) => {
     if (req.isAuthenticated()) {
       return res.json(req.user);
