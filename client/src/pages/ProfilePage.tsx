@@ -11,12 +11,30 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { Link, useParams, useLocation } from "wouter";
 import { Menu, Link2, ArrowLeft, UserPlus2 } from "lucide-react";
 import type { MediaItem } from "@db/schema";
 import { MediaDialog } from "../components/MediaDialog";
 import { MediaGallery } from "../components/MediaGallery";
 import AlbumManager from "../components/AlbumManager";
+
+interface ProfileUser {
+  id: number;
+  username: string;
+  displayName?: string;
+  email?: string;
+}
+
+interface FamilyRelation {
+  id: number;
+  relationType: string;
+  toUser: ProfileUser;
+}
 
 export default function ProfilePage() {
   const { user, logout } = useUser();
@@ -28,7 +46,7 @@ export default function ProfilePage() {
   const userId = params.id ? parseInt(params.id) : user?.id;
   const isOwnProfile = userId === user?.id;
 
-  const { data: profileUser } = useQuery({
+  const { data: profileUser } = useQuery<ProfileUser>({
     queryKey: ["/api/users", userId],
     enabled: !!userId && !isOwnProfile,
   });
@@ -63,7 +81,7 @@ export default function ProfilePage() {
     enabled: !!userId,
   });
 
-  const { data: familyRelations = [] } = useQuery({
+  const { data: familyRelations = [] } = useQuery<FamilyRelation[]>({
     queryKey: ["/api/family", userId],
     enabled: !!userId && !isOwnProfile,
   });
@@ -122,13 +140,15 @@ export default function ProfilePage() {
               <div className="space-y-4">
                 <div>
                   <h3 className="text-lg font-medium">Display Name</h3>
-                  <p className="text-muted-foreground">{displayUser?.displayName}</p>
+                  <p className="text-muted-foreground">
+                    {displayUser.displayName || displayUser.username}
+                  </p>
                 </div>
                 <div>
                   <h3 className="text-lg font-medium">Username</h3>
-                  <p className="text-muted-foreground">{displayUser?.username}</p>
+                  <p className="text-muted-foreground">{displayUser.username}</p>
                 </div>
-                {displayUser?.email && (
+                {displayUser.email && (
                   <div>
                     <h3 className="text-lg font-medium">Email</h3>
                     <p className="text-muted-foreground">{displayUser.email}</p>
@@ -206,7 +226,7 @@ export default function ProfilePage() {
                       {media.type === 'photo' && media.url && (
                         <img
                           src={media.url}
-                          alt={media.title}
+                          alt={media.title || ''}
                           className="w-16 h-16 object-cover rounded-md"
                         />
                       )}
@@ -259,7 +279,7 @@ export default function ProfilePage() {
                       {media.type === 'photo' && media.url && (
                         <img
                           src={media.url}
-                          alt={media.title}
+                          alt={media.title || ''}
                           className="w-16 h-16 object-cover rounded-md"
                         />
                       )}
