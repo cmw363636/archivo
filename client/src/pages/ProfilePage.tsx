@@ -34,6 +34,9 @@ export default function ProfilePage() {
     enabled: !!userId && !isOwnProfile,
   });
 
+  // Use either the fetched profile user or the current user
+  const displayUser = isOwnProfile ? user : profileUser;
+
   // Query for media where user is tagged
   const { data: taggedMedia = [] } = useQuery<MediaItem[]>({
     queryKey: ["/api/media/tagged", userId],
@@ -84,7 +87,7 @@ export default function ProfilePage() {
     setView(newView);
   };
 
-  if (!user) {
+  if (!user || !displayUser) {
     return null;
   }
 
@@ -108,7 +111,6 @@ export default function ProfilePage() {
                 className="flex items-center gap-2 text-[#7c6f9f] hover:text-[#7c6f9f]/80 -ml-2"
                 onClick={() => {
                   setLocation("/family");
-                  //localStorage.setItem("homePageView", "tree"); //removed as setLocation handles this now.
                 }}
               >
                 <ArrowLeft className="h-4 w-4" />
@@ -130,12 +132,6 @@ export default function ProfilePage() {
                     <div>
                       <h3 className="text-lg font-medium">Username</h3>
                       <p className="text-muted-foreground">{displayUser.username}</p>
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-medium">Email</h3>
-                      <p className="text-muted-foreground">
-                        {displayUser.email || "Not provided"}
-                      </p>
                     </div>
                     {isOwnProfile && (
                       <UserProfileEditor />
@@ -165,7 +161,7 @@ export default function ProfilePage() {
                           className="flex items-center gap-4 p-2 rounded-lg hover:bg-accent cursor-pointer"
                           onClick={() => setSelectedMedia(media)}
                         >
-                          {media.type === 'photo' && (
+                          {media.type === 'photo' && media.url && (
                             <img
                               src={media.url}
                               alt={media.title}
@@ -219,7 +215,7 @@ export default function ProfilePage() {
                           className="flex items-center gap-4 p-2 rounded-lg hover:bg-accent cursor-pointer"
                           onClick={() => setSelectedMedia(media)}
                         >
-                          {media.type === 'photo' && (
+                          {media.type === 'photo' && media.url && (
                             <img
                               src={media.url}
                               alt={media.title}
