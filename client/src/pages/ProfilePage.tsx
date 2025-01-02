@@ -20,18 +20,13 @@ import AlbumManager from "../components/AlbumManager";
 export default function ProfilePage() {
   const { user, logout } = useUser();
   const params = useParams();
+  const [, navigate] = useLocation();
   const [view, setView] = useState<"gallery" | "tree" | "albums" | null>(null);
   const [selectedMedia, setSelectedMedia] = useState<MediaItem | null>(null);
-  const [, navigate] = useLocation();
 
   // Get userId from URL params or fall back to current user's ID
   const userId = params.id ? parseInt(params.id) : user?.id;
   const isOwnProfile = userId === user?.id;
-
-  // Effect to reset view to null when userId changes
-  useEffect(() => {
-    setView(null);
-  }, [userId]);
 
   // Query for the profile user's data if it's not the current user
   const { data: profileUser } = useQuery({
@@ -101,8 +96,12 @@ export default function ProfilePage() {
             {!isOwnProfile && (
               <Button
                 variant="ghost"
-                className="flex items-center gap-2 text-[#7c6f9f] hover:text-[#7c6f9f]/80 -ml-2 mb-2"
-                onClick={() => setView("tree")}
+                className="flex items-center gap-2 text-[#7c6f9f] hover:text-[#7c6f9f]/80 -ml-2"
+                onClick={() => {
+                  navigate("/");
+                  // Set view to "tree" in HomePage
+                  localStorage.setItem("homePageView", "tree");
+                }}
               >
                 <ArrowLeft className="h-4 w-4" />
                 Back to Family Tree
@@ -257,89 +256,72 @@ export default function ProfilePage() {
               </SheetTrigger>
               <SheetContent>
                 <nav className="flex flex-col gap-2 pt-4">
-                  <Button 
-                    variant={view === "gallery" ? "default" : "ghost"}
-                    onClick={() => setView("gallery")}
-                    className="w-full"
-                  >
-                    Media Gallery
-                  </Button>
-                  <Button 
-                    variant={view === "albums" ? "default" : "ghost"}
-                    onClick={() => setView("albums")}
-                    className="w-full"
-                  >
-                    Albums
-                  </Button>
-                  <Button 
-                    variant={view === "tree" ? "default" : "ghost"}
-                    onClick={() => setView("tree")}
-                    className="w-full"
-                  >
-                    Family Tree
-                  </Button>
-                  {isOwnProfile && (
+                  <Link href="/">
                     <Button 
-                      variant={view === null ? "default" : "ghost"}
-                      onClick={() => setView(null)}
+                      variant={view === "gallery" ? "default" : "ghost"}
                       className="w-full"
                     >
+                      Media Gallery
+                    </Button>
+                  </Link>
+                  <Link href="/">
+                    <Button 
+                      variant={view === "albums" ? "default" : "ghost"}
+                      className="w-full"
+                    >
+                      Albums
+                    </Button>
+                  </Link>
+                  <Link href="/">
+                    <Button 
+                      variant={view === "tree" ? "default" : "ghost"}
+                      className="w-full"
+                    >
+                      Family Tree
+                    </Button>
+                  </Link>
+                  <Link href="/profile">
+                    <Button variant="ghost" className="w-full">
                       Profile
                     </Button>
-                  )}
-                  {!isOwnProfile && (
-                    <Link href="/profile">
-                      <Button variant="ghost" className="w-full">
-                        My Profile
-                      </Button>
-                    </Link>
-                  )}
-                  {isOwnProfile && (
-                    <Button variant="outline" onClick={handleLogout}>
-                      Logout
-                    </Button>
-                  )}
+                  </Link>
+                  <Button variant="outline" onClick={handleLogout}>
+                    Logout
+                  </Button>
                 </nav>
               </SheetContent>
             </Sheet>
 
             <nav className="hidden md:flex items-center gap-2">
-              <Button 
-                variant={view === "gallery" ? "default" : "ghost"}
-                onClick={() => setView("gallery")}
-              >
-                Media Gallery
-              </Button>
-              <Button 
-                variant={view === "albums" ? "default" : "ghost"}
-                onClick={() => setView("albums")}
-              >
-                Albums
-              </Button>
-              <Button 
-                variant={view === "tree" ? "default" : "ghost"}
-                onClick={() => setView("tree")}
-              >
-                Family Tree
-              </Button>
-              {isOwnProfile && (
+              <Link href="/">
                 <Button 
-                  variant={view === null ? "default" : "ghost"}
-                  onClick={() => setView(null)}
+                  variant={view === "gallery" ? "default" : "ghost"}
                 >
+                  Media Gallery
+                </Button>
+              </Link>
+              <Link href="/">
+                <Button 
+                  variant={view === "albums" ? "default" : "ghost"}
+                >
+                  Albums
+                </Button>
+              </Link>
+              <Link href="/">
+                <Button 
+                  variant={view === "tree" ? "default" : "ghost"}
+                >
+                  Family Tree
+                </Button>
+              </Link>
+              <Link href="/profile">
+                <Button variant="ghost">
                   Profile
                 </Button>
-              )}
-              {!isOwnProfile && (
-                <Link href="/profile">
-                  <Button variant="ghost">My Profile</Button>
-                </Link>
-              )}
-              {isOwnProfile && (
-                <Button variant="outline" onClick={handleLogout}>
-                  Logout
-                </Button>
-              )}
+              </Link>
+              <Button variant="outline" onClick={handleLogout}>
+                Logout
+              </Button>
             </nav>
           </div>
         </div>

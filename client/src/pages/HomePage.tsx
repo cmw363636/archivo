@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useUser } from "../hooks/use-user";
 import { MediaGallery } from "../components/MediaGallery";
@@ -17,6 +17,16 @@ export default function HomePage() {
   const { user, logout } = useUser();
   const [view, setView] = useState<"gallery" | "tree" | "albums">("gallery");
 
+  // Check for saved view state on component mount
+  useEffect(() => {
+    const savedView = localStorage.getItem("homePageView");
+    if (savedView === "gallery" || savedView === "tree" || savedView === "albums") {
+      setView(savedView);
+      // Clear the saved view after using it
+      localStorage.removeItem("homePageView");
+    }
+  }, []);
+
   const handleLogout = async () => {
     try {
       await logout();
@@ -26,7 +36,7 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-orange-50">
+    <div className="min-h-screen bg-primary/10">
       <header className="bg-white border-b shadow-sm">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <h1 className="text-2xl font-bold text-[#7c6f9f]">Archivo</h1>
@@ -43,18 +53,21 @@ export default function HomePage() {
                   <Button
                     variant={view === "gallery" ? "default" : "ghost"}
                     onClick={() => setView("gallery")}
+                    className="w-full"
                   >
                     Media Gallery
                   </Button>
                   <Button
                     variant={view === "albums" ? "default" : "ghost"}
                     onClick={() => setView("albums")}
+                    className="w-full"
                   >
                     Albums
                   </Button>
                   <Button
                     variant={view === "tree" ? "default" : "ghost"}
                     onClick={() => setView("tree")}
+                    className="w-full"
                   >
                     Family Tree
                   </Button>
