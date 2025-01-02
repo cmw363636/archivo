@@ -1,5 +1,5 @@
-import { Switch, Route } from "wouter";
-import { Loader2 } from "lucide-react";
+import { Switch, Route, Link } from "wouter";
+import { Loader2, Menu } from "lucide-react";
 import { useUser } from "./hooks/use-user";
 import AuthPage from "./pages/AuthPage";
 import HomePage from "./pages/HomePage";
@@ -7,6 +7,12 @@ import ProfilePage from "./pages/ProfilePage";
 import UploadedMediaPage from "./pages/UploadedMediaPage";
 import TaggedMediaPage from "./pages/TaggedMediaPage";
 import FamilyTree from "./components/FamilyTree";
+import { Button } from "@/components/ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 
 function App() {
   const { user, isLoading } = useUser();
@@ -54,23 +60,61 @@ function FamilyPage() {
       <header className="bg-white border-b shadow-sm">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <h1 className="text-2xl font-bold text-[#7c6f9f]">Archivo</h1>
-          <nav className="hidden md:flex items-center gap-2">
-            <Link href="/">
-              <Button variant="ghost">Media Gallery</Button>
-            </Link>
-            <Link href="/albums">
-              <Button variant="ghost">Albums</Button>
-            </Link>
-            <Link href="/family">
-              <Button variant="default">Family Tree</Button>
-            </Link>
-            <Link href="/profile">
-              <Button variant="ghost">Profile</Button>
-            </Link>
-            <Button variant="outline" onClick={handleLogout}>
-              Logout
-            </Button>
-          </nav>
+
+          <div className="flex items-center gap-4">
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="md:hidden">
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent>
+                <nav className="flex flex-col gap-2 pt-4">
+                  <Link href="/">
+                    <Button variant="ghost" className="w-full">
+                      Media Gallery
+                    </Button>
+                  </Link>
+                  <Link href="/albums">
+                    <Button variant="ghost" className="w-full">
+                      Albums
+                    </Button>
+                  </Link>
+                  <Link href="/family">
+                    <Button variant="default" className="w-full">
+                      Family Tree
+                    </Button>
+                  </Link>
+                  <Link href="/profile">
+                    <Button variant="ghost" className="w-full">
+                      Profile
+                    </Button>
+                  </Link>
+                  <Button variant="outline" onClick={handleLogout}>
+                    Logout
+                  </Button>
+                </nav>
+              </SheetContent>
+            </Sheet>
+
+            <nav className="hidden md:flex items-center gap-2">
+              <Link href="/">
+                <Button variant="ghost">Media Gallery</Button>
+              </Link>
+              <Link href="/albums">
+                <Button variant="ghost">Albums</Button>
+              </Link>
+              <Link href="/family">
+                <Button variant="default">Family Tree</Button>
+              </Link>
+              <Link href="/profile">
+                <Button variant="ghost">Profile</Button>
+              </Link>
+              <Button variant="outline" onClick={handleLogout}>
+                Logout
+              </Button>
+            </nav>
+          </div>
         </div>
       </header>
       <main className="container mx-auto px-4 py-8">
