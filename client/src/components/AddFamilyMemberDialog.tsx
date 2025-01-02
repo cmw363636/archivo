@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
@@ -58,6 +58,12 @@ export function AddFamilyMemberDialog({ open, onOpenChange, forUserId }: Props) 
   const [mode, setMode] = useState<"existing" | "new">("existing");
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Fetch existing users
+  const { data: users = [] } = useQuery({
+    queryKey: ["/api/users"],
+    enabled: open && mode === "existing",
+  });
 
   const form = useForm<AddRelationFormValues>({
     resolver: zodResolver(addRelationSchema),
@@ -202,16 +208,23 @@ export function AddFamilyMemberDialog({ open, onOpenChange, forUserId }: Props) 
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Select User</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          placeholder="Enter user ID"
-                          {...field}
-                          onChange={(e) =>
-                            field.onChange(e.target.value ? parseInt(e.target.value) : undefined)
-                          }
-                        />
-                      </FormControl>
+                      <Select
+                        onValueChange={(value) => field.onChange(parseInt(value))}
+                        value={field.value?.toString()}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a user" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {users.map((user: any) => (
+                            <SelectItem key={user.id} value={user.id.toString()}>
+                              {user.displayName || user.username}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}
