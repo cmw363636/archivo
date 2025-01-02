@@ -123,11 +123,14 @@ export default function ProfilePage() {
                       <h3 className="text-lg font-medium">Username</h3>
                       <p className="text-muted-foreground">{displayUser.username}</p>
                     </div>
+                    <div>
+                      <h3 className="text-lg font-medium">Email</h3>
+                      <p className="text-muted-foreground">
+                        {displayUser.email || "Not provided"}
+                      </p>
+                    </div>
                     {isOwnProfile && (
-                      <div>
-                        <h3 className="text-lg font-medium">Birthday</h3>
-                        <UserProfileEditor />
-                      </div>
+                      <UserProfileEditor />
                     )}
                   </div>
                 </CardContent>
@@ -257,7 +260,7 @@ export default function ProfilePage() {
               <SheetContent>
                 <nav className="flex flex-col gap-2 pt-4">
                   <Link href="/">
-                    <Button 
+                    <Button
                       variant={view === "gallery" ? "default" : "ghost"}
                       className="w-full"
                     >
@@ -265,7 +268,7 @@ export default function ProfilePage() {
                     </Button>
                   </Link>
                   <Link href="/">
-                    <Button 
+                    <Button
                       variant={view === "albums" ? "default" : "ghost"}
                       className="w-full"
                     >
@@ -273,7 +276,7 @@ export default function ProfilePage() {
                     </Button>
                   </Link>
                   <Link href="/">
-                    <Button 
+                    <Button
                       variant={view === "tree" ? "default" : "ghost"}
                       className="w-full"
                     >
@@ -294,21 +297,21 @@ export default function ProfilePage() {
 
             <nav className="hidden md:flex items-center gap-2">
               <Link href="/">
-                <Button 
+                <Button
                   variant={view === "gallery" ? "default" : "ghost"}
                 >
                   Media Gallery
                 </Button>
               </Link>
               <Link href="/">
-                <Button 
+                <Button
                   variant={view === "albums" ? "default" : "ghost"}
                 >
                   Albums
                 </Button>
               </Link>
               <Link href="/">
-                <Button 
+                <Button
                   variant={view === "tree" ? "default" : "ghost"}
                 >
                   Family Tree

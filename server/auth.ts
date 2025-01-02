@@ -118,7 +118,8 @@ export function setupAuth(app: Express) {
           user: {
             id: user.id,
             username: user.username,
-            displayName: user.displayName
+            displayName: user.displayName,
+            email: user.email
           },
         });
       });
@@ -134,7 +135,7 @@ export function setupAuth(app: Express) {
           .send("Invalid input: " + result.error.issues.map((i) => i.message).join(", "));
       }
 
-      const { username, password, displayName } = result.data;
+      const { username, password, displayName, email } = result.data;
 
       // Check if user already exists
       const [existingUser] = await db
@@ -157,6 +158,7 @@ export function setupAuth(app: Express) {
           username,
           password: hashedPassword,
           displayName,
+          email,
         })
         .returning();
 
@@ -167,7 +169,12 @@ export function setupAuth(app: Express) {
         }
         return res.json({
           message: "Registration successful",
-          user: { id: newUser.id, username: newUser.username },
+          user: { 
+            id: newUser.id, 
+            username: newUser.username,
+            displayName: newUser.displayName,
+            email: newUser.email
+          },
         });
       });
     } catch (error) {
