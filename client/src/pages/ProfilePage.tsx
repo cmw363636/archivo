@@ -45,6 +45,15 @@ export default function ProfilePage() {
   // Query for media where user is tagged
   const { data: taggedMedia = [] } = useQuery<MediaItem[]>({
     queryKey: ["/api/media/tagged", userId],
+    queryFn: async () => {
+      const response = await fetch(`/api/media/tagged?userId=${userId}`, {
+        credentials: 'include'
+      });
+      if (!response.ok) {
+        throw new Error('Failed to fetch tagged media');
+      }
+      return response.json();
+    },
     enabled: !!userId,
   });
 
