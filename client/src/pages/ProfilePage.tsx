@@ -11,7 +11,7 @@ import {
   SheetContent,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { Menu, Link2 } from "lucide-react";
+import { Menu, Link2, ArrowLeft } from "lucide-react";
 import type { MediaItem } from "@db/schema";
 import { MediaDialog } from "../components/MediaDialog";
 import { MediaGallery } from "../components/MediaGallery";
@@ -225,7 +225,15 @@ export default function ProfilePage() {
     <div className="min-h-screen bg-primary/10">
       <header className="bg-white border-b shadow-sm">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-[#7c6f9f]">Archivo</h1>
+          <div className="flex items-center gap-4">
+            <h1 className="text-2xl font-bold text-[#7c6f9f]">Archivo</h1>
+            {!isOwnProfile && (
+              <Link href="/profile" className="flex items-center gap-2 text-[#7c6f9f] hover:underline">
+                <ArrowLeft className="h-4 w-4" />
+                Back to Family Tree
+              </Link>
+            )}
+          </div>
 
           <div className="flex items-center gap-4">
             <Sheet>
@@ -257,13 +265,15 @@ export default function ProfilePage() {
                   >
                     Family Tree
                   </Button>
-                  <Button 
-                    variant={view === null ? "default" : "ghost"}
-                    onClick={() => setView(null)}
-                    className="w-full"
-                  >
-                    Profile
-                  </Button>
+                  {(isOwnProfile || view === null) && (
+                    <Button 
+                      variant={view === null ? "default" : "ghost"}
+                      onClick={() => setView(null)}
+                      className="w-full"
+                    >
+                      Profile
+                    </Button>
+                  )}
                   {!isOwnProfile && (
                     <Link href="/profile">
                       <Button variant="ghost" className="w-full">
@@ -299,12 +309,14 @@ export default function ProfilePage() {
               >
                 Family Tree
               </Button>
-              <Button 
-                variant={view === null ? "default" : "ghost"}
-                onClick={() => setView(null)}
-              >
-                Profile
-              </Button>
+              {(isOwnProfile || view === null) && (
+                <Button 
+                  variant={view === null ? "default" : "ghost"}
+                  onClick={() => setView(null)}
+                >
+                  Profile
+                </Button>
+              )}
               {!isOwnProfile && (
                 <Link href="/profile">
                   <Button variant="ghost">My Profile</Button>
