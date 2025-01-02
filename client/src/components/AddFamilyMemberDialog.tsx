@@ -68,25 +68,46 @@ export function AddFamilyMemberDialog({ open, onOpenChange, forUserId }: Props) 
 
   const addRelationMutation = useMutation({
     mutationFn: async (values: AddRelationFormValues) => {
-      // Convert relation type to lowercase for consistency
-      const relationData = {
-        ...values,
-        relationType: values.relationType.toLowerCase(),
-        userId: forUserId,
-      };
+      let toUserId: number;
 
-      const response = await fetch("/api/family", {
+      // If creating a new user, create them first
+      if (mode === "new" && values.newUser) {
+        const registerResponse = await fetch("/api/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(values.newUser),
+          credentials: "include",
+        });
+
+        if (!registerResponse.ok) {
+          throw new Error(await registerResponse.text());
+        }
+
+        const registerData = await registerResponse.json();
+        toUserId = registerData.user.id;
+      } else if (mode === "existing" && values.existingUserId) {
+        toUserId = values.existingUserId;
+      } else {
+        throw new Error("Either a new user or existing user ID must be provided");
+      }
+
+      // Now create the family relation
+      const relationResponse = await fetch("/api/family", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(relationData),
+        body: JSON.stringify({
+          fromUserId: forUserId,
+          toUserId: toUserId,
+          relationType: values.relationType,
+        }),
         credentials: "include",
       });
 
-      if (!response.ok) {
-        throw new Error(await response.text());
+      if (!relationResponse.ok) {
+        throw new Error(await relationResponse.text());
       }
 
-      return response.json();
+      return relationResponse.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/family", forUserId] });
@@ -237,6 +258,7 @@ export function AddFamilyMemberDialog({ open, onOpenChange, forUserId }: Props) 
                           type="email"
                           placeholder="Enter email"
                           {...field}
+                          value={field.value ?? ""}
                         />
                       </FormControl>
                       <FormMessage />
@@ -254,6 +276,7 @@ export function AddFamilyMemberDialog({ open, onOpenChange, forUserId }: Props) 
                         <Input
                           type="date"
                           {...field}
+                          value={field.value ?? ""}
                         />
                       </FormControl>
                       <FormMessage />
