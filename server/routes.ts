@@ -994,22 +994,23 @@ export function registerRoutes(app: Express): Server {
       return res.status(401).send("Not authenticated");
     }
 
-    const { dateOfBirth } = req.body;
+    const { dateOfBirth, email } = req.body;
 
     try {
       // Update user profile
       const [updatedUser] = await db
         .update(users)
         .set({
-          dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
+          ...(dateOfBirth && { dateOfBirth: new Date(dateOfBirth) }),
+          ...(email !== undefined && { email }),
         })
-        .where(eq(users.id, req.user.id))
+        .where(eq(users.id, req.userid))
         .returning();
 
       res.json(updatedUser);
     } catch (error) {
-      console.error('Error updating user profile:', error);
-      res.status(500).send("Error updating user profile");
+      console.error('Error updating profile:', error);
+      res.status(500).send("Error updating profile");
     }
   });
 

@@ -8,6 +8,7 @@ export const users = pgTable("users", {
   username: text("username").unique().notNull(),
   password: text("password").notNull(),
   displayName: text("display_name").notNull(),
+  email: text("email"),  // New optional email field
   dateOfBirth: timestamp("date_of_birth"),
   bio: text("bio"),
 });
@@ -122,10 +123,12 @@ export const familyRelationsRelations = relations(familyRelations, ({ one }) => 
 
 // Schemas with custom types
 export const insertUserSchema = createInsertSchema(users, {
-  dateOfBirth: z.string().optional().nullable()
+  dateOfBirth: z.string().optional().nullable(),
+  email: z.string().email("Invalid email format").optional(),
 });
 export const selectUserSchema = createSelectSchema(users, {
-  dateOfBirth: z.string().optional().nullable()
+  dateOfBirth: z.string().optional().nullable(),
+  email: z.string().email("Invalid email format").optional(),
 });
 
 // Types

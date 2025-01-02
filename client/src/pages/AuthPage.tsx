@@ -14,6 +14,7 @@ export default function AuthPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
+  const [email, setEmail] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const { login, register } = useUser();
   const { toast } = useToast();
@@ -32,12 +33,14 @@ export default function AuthPage() {
         await register({ 
           username, 
           password,
-          displayName: displayName || username 
+          displayName: displayName || username,
+          email: email || undefined
         });
       }
       setUsername("");
       setPassword("");
       setDisplayName("");
+      setEmail("");
     } catch (error: any) {
       toast({
         title: "Error",
@@ -170,17 +173,31 @@ export default function AuthPage() {
               />
             </div>
             {!isLogin && (
-              <div className="space-y-2">
-                <Label htmlFor="displayName">Display Name</Label>
-                <Input
-                  id="displayName"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  placeholder="How should we call you?"
-                  className="bg-white"
-                  disabled={isSubmitting}
-                />
-              </div>
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="displayName">Display Name</Label>
+                  <Input
+                    id="displayName"
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    placeholder="How should we call you?"
+                    className="bg-white"
+                    disabled={isSubmitting}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email (optional)</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="Enter your email"
+                    className="bg-white"
+                    disabled={isSubmitting}
+                  />
+                </div>
+              </>
             )}
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
@@ -210,7 +227,13 @@ export default function AuthPage() {
                 type="button"
                 variant="ghost"
                 className="w-full"
-                onClick={() => setIsLogin(!isLogin)}
+                onClick={() => {
+                  setIsLogin(!isLogin);
+                  setUsername("");
+                  setPassword("");
+                  setDisplayName("");
+                  setEmail("");
+                }}
                 disabled={isSubmitting}
               >
                 {isLogin ? "Need an account?" : "Already have an account?"}
