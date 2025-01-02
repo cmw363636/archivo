@@ -133,9 +133,10 @@ export function AddFamilyMemberDialog({ open, onOpenChange, forUserId }: Props) 
             Add a new family member by selecting their relation type and either choosing an existing user or creating a new one.
           </DialogDescription>
         </DialogHeader>
+
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            {/* Relation Type - Always visible regardless of mode */}
+            {/* Relation Type - Always visible */}
             <FormField
               control={form.control}
               name="relationType"
@@ -163,7 +164,7 @@ export function AddFamilyMemberDialog({ open, onOpenChange, forUserId }: Props) 
               )}
             />
 
-            <Tabs value={mode} onValueChange={(v) => setMode(v as "existing" | "new")}>
+            <Tabs value={mode} onValueChange={(v) => setMode(v as "existing" | "new")} className="pt-2">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="existing">Existing User</TabsTrigger>
                 <TabsTrigger value="new">New User</TabsTrigger>
@@ -192,89 +193,87 @@ export function AddFamilyMemberDialog({ open, onOpenChange, forUserId }: Props) 
                 />
               </TabsContent>
 
-              <TabsContent value="new">
-                <div className="space-y-4">
-                  <FormField
-                    control={form.control}
-                    name="newUser.username"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Username</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Enter username" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+              <TabsContent value="new" className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="newUser.username"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Username</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Enter username" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-                  <FormField
-                    control={form.control}
-                    name="newUser.displayName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Display Name</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Enter display name" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                <FormField
+                  control={form.control}
+                  name="newUser.displayName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Display Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Enter display name" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-                  <FormField
-                    control={form.control}
-                    name="newUser.email"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Email (optional)</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="email"
-                            placeholder="Enter email"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                <FormField
+                  control={form.control}
+                  name="newUser.email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email (optional)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="email"
+                          placeholder="Enter email"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-                  <FormField
-                    control={form.control}
-                    name="newUser.birthday"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Birthday (optional)</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="date"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                <FormField
+                  control={form.control}
+                  name="newUser.birthday"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Birthday (optional)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="date"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-                  <FormField
-                    control={form.control}
-                    name="newUser.password"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Password</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="password"
-                            placeholder="Enter password"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+                <FormField
+                  control={form.control}
+                  name="newUser.password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Password</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="password"
+                          placeholder="Enter password"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </TabsContent>
             </Tabs>
 
