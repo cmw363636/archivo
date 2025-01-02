@@ -31,7 +31,24 @@ import {
 } from "@/components/ui/tooltip";
 import { useUser } from "../hooks/use-user";
 import { useToast } from "@/hooks/use-toast";
-import { Trash2 } from "lucide-react";
+import { Trash2, Calendar as CalendarIcon } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { Input } from "@/components/ui/input";
+import { format } from "date-fns";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import * as z from "zod";
+import { cn } from "@/lib/utils";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+
 
 type FamilyMember = {
   id: number;
@@ -59,6 +76,19 @@ const relationTypeMap = {
   sibling: 'sibling'
 } as const;
 
+const newUserSchema = z.object({
+  username: z.string().min(3, "Username must be at least 3 characters"),
+  displayName: z.string().min(1, "Display name is required"),
+  email: z.string().email("Invalid email").optional(),
+  birthday: z.date().optional(),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+  relationType: z.enum(["parent", "child", "sibling", "spouse"], {
+    required_error: "Please select a relation type",
+  }),
+});
+
+type NewUserFormData = z.infer<typeof newUserSchema>;
+
 export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
   const { user } = useUser();
   const { toast } = useToast();
@@ -69,12 +99,21 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
   const [isAddingRelation, setIsAddingRelation] = useState(false);
   const [selectedRelativeMemberId, setSelectedRelativeMemberId] = useState<string>("");
   const [relationType, setRelationType] = useState<string>("");
-
-  // Add state for panning
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const svgRef = useRef<SVGSVGElement>(null);
+  const [isCreatingUser, setIsCreatingUser] = useState(false);
+
+  const form = useForm<NewUserFormData>({
+    resolver: zodResolver(newUserSchema),
+    defaultValues: {
+      username: "",
+      displayName: "",
+      email: "",
+      password: "",
+    },
+  });
 
   const { data: relations = [], isLoading } = useQuery<FamilyRelation[]>({
     queryKey: ["/api/family"],
@@ -86,7 +125,6 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
     enabled: !!user,
   });
 
-  // Function to get relationship between current user and hovered member
   const getRelationship = (hoveredMemberId: number) => {
     if (!user) return null;
 
@@ -109,9 +147,8 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
     }
   };
 
-  // Mouse event handlers for panning
   const handleMouseDown = (event: React.MouseEvent) => {
-    if (event.button !== 0) return; // Only handle left click
+    if (event.button !== 0) return;
     setIsDragging(true);
     setDragStart({
       x: event.clientX - position.x,
@@ -151,7 +188,7 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...data,
-          inheritRelations: true // Add flag to indicate backend should handle inheritance
+          inheritRelations: true
         }),
         credentials: "include",
       });
@@ -212,11 +249,76 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
     try {
       await deleteMutation.mutateAsync(relationId);
     } catch (error) {
-      // Error handling is done in the mutation
+
     }
   };
 
+  const createUserAndRelationMutation = useMutation({
+    mutationFn: async (data: NewUserFormData) => {
+      const userResponse = await fetch("/api/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: data.username,
+          password: data.password,
+          displayName: data.displayName,
+          email: data.email,
+          birthday: data.birthday ? format(data.birthday, "yyyy-MM-dd") : undefined,
+        }),
+        credentials: "include",
+      });
+
+      if (!userResponse.ok) {
+        throw new Error(await userResponse.text());
+      }
+
+      const { user: newUser } = await userResponse.json();
+
+      const relationResponse = await fetch("/api/family", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          toUserId: newUser.id,
+          relationType: data.relationType,
+          inheritRelations: true,
+        }),
+        credentials: "include",
+      });
+
+      if (!relationResponse.ok) {
+        throw new Error(await relationResponse.text());
+      }
+
+      return relationResponse.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/family"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      setIsAddingRelation(false);
+      setIsCreatingUser(false);
+      form.reset();
+      toast({
+        title: "Success",
+        description: "New family member added successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleAddRelation = () => {
+    if (isCreatingUser) {
+      form.handleSubmit((data) => {
+        createUserAndRelationMutation.mutate(data);
+      })();
+      return;
+    }
+
     if (!selectedRelativeMemberId) {
       toast({
         title: "Error",
@@ -263,7 +365,6 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
     );
   }
 
-  // Calculate tree layout
   const treeWidth = 1200;
   const treeHeight = 800;
   const nodeRadius = 40;
@@ -274,7 +375,6 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
     const centerX = treeWidth / 2;
     const centerY = treeHeight / 2;
 
-    // Group family members by their relationship to the user
     const familyGroups = relations.reduce((acc, relation) => {
       const isFromUser = relation.fromUserId === user.id;
       const member = isFromUser ? relation.toUser : relation.fromUser;
@@ -291,7 +391,6 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
       return acc;
     }, {} as Record<string, FamilyMember[]>);
 
-    // Position current user at center
     const userNode = (
       <g
         key={user.id}
@@ -320,7 +419,6 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
     const relationLines: JSX.Element[] = [];
     const siblingLines: JSX.Element[] = [];
 
-    // Position parents above
     if (familyGroups.parent) {
       const parentWidth = horizontalSpacing * (familyGroups.parent.length - 1);
       familyGroups.parent.forEach((parent, i) => {
@@ -366,7 +464,6 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
       });
     }
 
-    // Position children below
     if (familyGroups.child) {
       const childWidth = horizontalSpacing * (familyGroups.child.length - 1);
       familyGroups.child.forEach((child, i) => {
@@ -412,7 +509,6 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
       });
     }
 
-    // Position spouse to the left
     if (familyGroups.spouse) {
       familyGroups.spouse.forEach((spouse, i) => {
         const x = centerX - horizontalSpacing;
@@ -468,16 +564,13 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
       });
     }
 
-    // Position siblings to the right and add lines between siblings
     if (familyGroups.sibling) {
-      // Calculate starting position for siblings
       const siblingStartX = centerX + horizontalSpacing;
 
       familyGroups.sibling.forEach((sibling, i) => {
         const x = siblingStartX + (i * horizontalSpacing);
         const y = centerY;
 
-        // Add node for sibling
         memberNodes.push(
           <g
             key={sibling.id}
@@ -502,7 +595,6 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
           </g>
         );
 
-        // Add line from user to sibling
         relationLines.push(
           <g key={`line-sibling-${sibling.id}`}>
             <line
@@ -527,7 +619,6 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
           </g>
         );
 
-        // Add lines between siblings (connect each sibling to the next one)
         if (i > 0) {
           siblingLines.push(
             <g key={`sibling-connection-${i}`}>
@@ -642,63 +733,220 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
           if (!open) {
             setSelectedRelativeMemberId("");
             setRelationType("");
+            setIsCreatingUser(false);
+            form.reset();
           }
         }}
       >
-        <DialogContent>
+        <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Add Family Relation</DialogTitle>
             <DialogDescription>
-              Select a family member and specify their relation to you
+              Select an existing family member or create a new one
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Select Member</label>
-              <Select
-                value={selectedRelativeMemberId}
-                onValueChange={setSelectedRelativeMemberId}
+
+          <div className="grid gap-4 py-4">
+            <div className="flex items-center gap-4">
+              <Button
+                type="button"
+                variant={!isCreatingUser ? "default" : "outline"}
+                onClick={() => setIsCreatingUser(false)}
+                className="flex-1"
               >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a family member" />
-                </SelectTrigger>
-                <SelectContent>
-                  {allUsers
-                    .filter((u) => u.id !== user?.id)
-                    .map((user) => (
-                      <SelectItem key={user.id} value={user.id.toString()}>
-                        {user.displayName || user.username}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
+                Existing Member
+              </Button>
+              <Button
+                type="button"
+                variant={isCreatingUser ? "default" : "outline"}
+                onClick={() => setIsCreatingUser(true)}
+                className="flex-1"
+              >
+                New Member
+              </Button>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Relation Type</label>
-              <Select
-                value={relationType}
-                onValueChange={setRelationType}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select relation type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="parent">Parent</SelectItem>
-                  <SelectItem value="child">Child</SelectItem>
-                  <SelectItem value="sibling">Sibling</SelectItem>
-                  <SelectItem value="spouse">Spouse</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {isCreatingUser ? (
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(handleAddRelation)} className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="username"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Username</FormLabel>
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-            <Button
-              className="w-full"
-              disabled={!selectedRelativeMemberId || !relationType}
-              onClick={handleAddRelation}
-            >
-              Add Relation
-            </Button>
+                  <FormField
+                    control={form.control}
+                    name="displayName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Display Name</FormLabel>
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email (Optional)</FormLabel>
+                        <FormControl>
+                          <Input type="email" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Password</FormLabel>
+                        <FormControl>
+                          <Input type="password" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="birthday"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col">
+                        <FormLabel>Birthday (Optional)</FormLabel>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant={"outline"}
+                                className={cn(
+                                  "w-full pl-3 text-left font-normal",
+                                  !field.value && "text-muted-foreground"
+                                )}
+                              >
+                                {field.value ? (
+                                  format(field.value, "PPP")
+                                ) : (
+                                  <span>Pick a date</span>
+                                )}
+                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={field.value}
+                              onSelect={field.onChange}
+                              disabled={(date) =>
+                                date > new Date() || date < new Date("1900-01-01")
+                              }
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="relationType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Relation Type</FormLabel>
+                        <Select
+                          value={field.value}
+                          onValueChange={field.onChange}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select relation type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="parent">Parent</SelectItem>
+                            <SelectItem value="child">Child</SelectItem>
+                            <SelectItem value="sibling">Sibling</SelectItem>
+                            <SelectItem value="spouse">Spouse</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <Button type="submit" className="w-full">
+                    Create Member
+                  </Button>
+                </form>
+              </Form>
+            ) : (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Select Member</label>
+                  <Select
+                    value={selectedRelativeMemberId}
+                    onValueChange={setSelectedRelativeMemberId}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a family member" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {allUsers
+                        .filter((u) => u.id !== user?.id)
+                        .map((user) => (
+                          <SelectItem key={user.id} value={user.id.toString()}>
+                            {user.displayName || user.username}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Relation Type</label>
+                  <Select
+                    value={relationType}
+                    onValueChange={setRelationType}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select relation type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="parent">Parent</SelectItem>
+                      <SelectItem value="child">Child</SelectItem>
+                      <SelectItem value="sibling">Sibling</SelectItem>
+                      <SelectItem value="spouse">Spouse</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <Button
+                  className="w-full"
+                  disabled={!selectedRelativeMemberId || !relationType}
+                  onClick={handleAddRelation}
+                >
+                  Add Relation
+                </Button>
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>
