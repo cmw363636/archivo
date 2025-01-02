@@ -267,7 +267,7 @@ export default function ProfilePage() {
                       Media Gallery
                     </Button>
                   </Link>
-                  <Link href="/">
+                  <Link href="/albums">
                     <Button
                       variant={view === "albums" ? "default" : "ghost"}
                       className="w-full"
@@ -275,7 +275,7 @@ export default function ProfilePage() {
                       Albums
                     </Button>
                   </Link>
-                  <Link href="/">
+                  <Link href="/family">
                     <Button
                       variant={view === "tree" ? "default" : "ghost"}
                       className="w-full"
@@ -306,14 +306,14 @@ export default function ProfilePage() {
                   Media Gallery
                 </Button>
               </Link>
-              <Link href="/">
+              <Link href="/albums">
                 <Button
                   variant={view === "albums" ? "default" : "ghost"}
                 >
                   Albums
                 </Button>
               </Link>
-              <Link href="/">
+              <Link href="/family">
                 <Button
                   variant={view === "tree" ? "default" : "ghost"}
                 >
