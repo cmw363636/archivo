@@ -33,15 +33,15 @@ import { Loader2 } from "lucide-react";
 
 // Schema for adding a new relation
 const addRelationSchema = z.object({
-  relationType: z.enum(["Parent", "Child", "Sibling", "Spouse"]),
+  relationType: z.enum(["parent", "child", "sibling", "spouse"]),
   existingUserId: z.number().optional(),
   newUser: z
     .object({
       username: z.string().min(1, "Username is required"),
       displayName: z.string().optional(),
       password: z.string().min(6, "Password must be at least 6 characters"),
-      email: z.string().email("Invalid email").optional(),
-      birthday: z.string().optional(),
+      email: z.string().email("Invalid email").optional().nullable(),
+      birthday: z.string().optional().nullable(),
     })
     .optional(),
 });
@@ -62,19 +62,23 @@ export function AddFamilyMemberDialog({ open, onOpenChange, forUserId }: Props) 
   const form = useForm<AddRelationFormValues>({
     resolver: zodResolver(addRelationSchema),
     defaultValues: {
-      relationType: "Parent",
+      relationType: "parent",
     },
   });
 
   const addRelationMutation = useMutation({
     mutationFn: async (values: AddRelationFormValues) => {
+      // Convert relation type to lowercase for consistency
+      const relationData = {
+        ...values,
+        relationType: values.relationType.toLowerCase(),
+        userId: forUserId,
+      };
+
       const response = await fetch("/api/family", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...values,
-          userId: forUserId,
-        }),
+        body: JSON.stringify(relationData),
         credentials: "include",
       });
 
@@ -153,10 +157,10 @@ export function AddFamilyMemberDialog({ open, onOpenChange, forUserId }: Props) 
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="Parent">Parent</SelectItem>
-                      <SelectItem value="Child">Child</SelectItem>
-                      <SelectItem value="Sibling">Sibling</SelectItem>
-                      <SelectItem value="Spouse">Spouse</SelectItem>
+                      <SelectItem value="parent">Parent</SelectItem>
+                      <SelectItem value="child">Child</SelectItem>
+                      <SelectItem value="sibling">Sibling</SelectItem>
+                      <SelectItem value="spouse">Spouse</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
