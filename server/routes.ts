@@ -834,10 +834,96 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Family relations endpoints
+  app.get("/api/family", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    try {
+      const userId = req.query.userId ? parseInt(req.query.userId as string) : req.user.id;
+
+      const relations = await db.query.familyRelations.findMany({
+        where: or(
+          eq(familyRelations.fromUserId, userId),
+          eq(familyRelations.toUserId, userId)
+        ),
+        with: {
+          fromUser: true,
+          toUser: true,
+        },
+      });
+
+      res.json(relations);
+    } catch (error) {
+      console.error('Error fetching family relations:', error);
+      res.status(500).send("Error fetching family relations");
+    }
+  });
+
+  app.post("/api/family", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const { fromUserId, toUserId, relationType } = req.body;
+
+    // Validate relation type
+    const validRelationTypes = ['parent', 'child', 'sibling', 'spouse'];
+    if (!validRelationTypes.includes(relationType)) {
+      return res.status(400).send("Invalid relation type");
+    }
+
+    try {
+      // Create the family relation
+      const [relation] = await db
+        .insert(familyRelations)
+        .values({
+          fromUserId: fromUserId,
+          toUserId: toUserId,
+          relationType,
+        })
+        .returning();
+
+      // If the relation is successful, create the reciprocal relation
+      let reciprocalType;
+      switch (relationType) {
+        case 'parent':
+          reciprocalType = 'child';
+          break;
+        case 'child':
+          reciprocalType = 'parent';
+          break;
+        case 'sibling':
+          reciprocalType = 'sibling';
+          break;
+        case 'spouse':
+          reciprocalType = 'spouse';
+          break;
+      }
+
+      // Create reciprocal relation
+      await db
+        .insert(familyRelations)
+        .values({
+          fromUserId: toUserId,
+          toUserId: fromUserId,
+          relationType: reciprocalType,
+        })
+        .returning();
+
+      res.json(relation);
+    } catch (error) {
+      console.error('Error creating family relation:', error);
+      res.status(500).send("Error creating family relation");
+    }
+  });
+
   // Create new family member endpoint
   app.post("/api/family/create-member", async (req, res) => {
     try {
       const { username, password, displayName, email, birthday } = req.body;
+      const autoLogin = req.query.autoLogin !== 'false';
 
       // Check if user already exists
       const [existingUser] = await db
@@ -850,12 +936,12 @@ export function registerRoutes(app: Express): Server {
         return res.status(400).send("Username already exists");
       }
 
-      // Hash the password using scrypt
+      // Hash the password
       const salt = randomBytes(16).toString("hex");
       const buf = (await scryptAsync(password, salt, 64)) as Buffer;
       const hashedPassword = `${buf.toString("hex")}.${salt}`;
 
-      // Create the new user without logging them in
+      // Create the new user
       const [newUser] = await db
         .insert(users)
         .values({
@@ -867,142 +953,38 @@ export function registerRoutes(app: Express): Server {
         })
         .returning();
 
-      // Return the new user info without logging them in
-      return res.json({
-        message: "Family member created successfully",
-        user: {
-          id: newUser.id,
-          username: newUser.username,
-          displayName: newUser.displayName,
-          email: newUser.email,
-        },
-      });
+      // Only log in the user if autoLogin is true
+      if (autoLogin) {
+        req.login(newUser, (err) => {
+          if (err) {
+            console.error('Error logging in new user:', err);
+            return res.status(500).send("Error during login");
+          }
+          return res.json({
+            message: "Family member created and logged in successfully",
+            user: {
+              id: newUser.id,
+              username: newUser.username,
+              displayName: newUser.displayName,
+              email: newUser.email,
+            },
+          });
+        });
+      } else {
+        // Return user info without logging them in
+        return res.json({
+          message: "Family member created successfully",
+          user: {
+            id: newUser.id,
+            username: newUser.username,
+            displayName: newUser.displayName,
+            email: newUser.email,
+          },
+        });
+      }
     } catch (error) {
       console.error('Error creating family member:', error);
       res.status(500).send("Error creating family member");
-    }
-  });
-
-  // Family relations endpoints
-  app.get("/api/family", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).send("Not authenticated");
-    }
-
-    const relations = await db.query.familyRelations.findMany({
-      where: or(
-        eq(familyRelations.fromUserId, req.user.id),
-        eq(familyRelations.toUserId, req.user.id)
-      ),
-      with: {
-        fromUser: true,
-        toUser: true,
-      },
-    });
-    res.json(relations);
-  });
-
-  app.post("/api/family", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).send("Not authenticated");
-    }
-
-    const { toUserId, relationType, inheritRelations = false } = req.body;
-
-    // Validate relation type
-    const validRelationTypes = ['parent', 'child', 'sibling', 'spouse'];
-    if (!validRelationTypes.includes(relationType)) {
-      return res.status(400).send("Invalid relation type");
-    }
-
-    try {
-      // Begin a transaction to ensure all relationships are created atomically
-      const [relation] = await db
-        .insert(familyRelations)
-        .values({
-          fromUserId: req.user.id,
-          toUserId,
-          relationType,
-        })
-        .returning();
-
-      // If inheritance is enabled, handle relationship inheritance
-      if (inheritRelations) {
-        if (relationType === 'sibling') {
-          // Find all parents of the sibling
-          const siblingParents = await db.query.familyRelations.findMany({
-            where: and(
-              eq(familyRelations.toUserId, toUserId),
-              eq(familyRelations.relationType, 'parent')
-            ),
-          });
-
-          // Create parent relationships for the current user with the same parents
-          for (const parentRelation of siblingParents) {
-            // Check if the relationship already exists
-            const [existingRelation] = await db
-              .select()
-              .from(familyRelations)
-              .where(
-                and(
-                  eq(familyRelations.fromUserId, req.user.id),
-                  eq(familyRelations.toUserId, parentRelation.fromUserId),
-                  eq(familyRelations.relationType, 'parent')
-                )
-              )
-              .limit(1);
-
-            if (!existingRelation) {
-              await db
-                .insert(familyRelations)
-                .values({
-                  fromUserId: req.user.id,
-                  toUserId: parentRelation.fromUserId,
-                  relationType: 'parent',
-                });
-            }
-          }
-
-          // Also handle the case where the sibling is the child in parent relationships
-          const siblingParentsAsChild = await db.query.familyRelations.findMany({
-            where: and(
-              eq(familyRelations.fromUserId, toUserId),
-              eq(familyRelations.relationType, 'parent')
-            ),
-          });
-
-          for (const parentRelation of siblingParentsAsChild) {
-            // Check if the relationship already exists
-            const [existingRelation] = await db
-              .select()
-              .from(familyRelations)
-              .where(
-                and(
-                  eq(familyRelations.fromUserId, req.user.id),
-                  eq(familyRelations.toUserId, parentRelation.toUserId),
-                  eq(familyRelations.relationType, 'parent')
-                )
-              )
-              .limit(1);
-
-            if (!existingRelation) {
-              await db
-                .insert(familyRelations)
-                .values({
-                  fromUserId: req.user.id,
-                  toUserId: parentRelation.toUserId,
-                  relationType: 'parent',
-                });
-            }
-          }
-        }
-        // Add more relationship inheritance rules here for other relation types if needed
-      }
-
-      res.json(relation);
-    } catch (error) {
-      console.error('Error creating family relation:', error);
-      res.status(500).send("Error creating family relation");
     }
   });
 
@@ -1030,8 +1012,7 @@ export function registerRoutes(app: Express): Server {
       }
 
       await db
-        .delete(familyRelations)
-        .where(eq(familyRelations.id, parseInt(relationId)));
+        .delete(familyRelations)        .where(eq(familyRelations.id, parseInt(relationId)));
 
       res.json({ message: "Relation deleted successfully" });
     } catch (error) {

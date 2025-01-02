@@ -70,9 +70,9 @@ export function AddFamilyMemberDialog({ open, onOpenChange, forUserId }: Props) 
     mutationFn: async (values: AddRelationFormValues) => {
       let toUserId: number;
 
-      // If creating a new user, create them first
+      // If creating a new user, create them first without auto-login
       if (mode === "new" && values.newUser) {
-        const registerResponse = await fetch("/api/register", {
+        const registerResponse = await fetch("/api/register?autoLogin=false", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(values.newUser),
