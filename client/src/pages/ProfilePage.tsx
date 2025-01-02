@@ -225,7 +225,7 @@ export default function ProfilePage() {
     <div className="min-h-screen bg-primary/10">
       <header className="bg-white border-b shadow-sm">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-primary">Family Archive</h1>
+          <h1 className="text-2xl font-bold text-primary">Archivo</h1>
 
           <div className="flex items-center gap-4">
             <Sheet>
