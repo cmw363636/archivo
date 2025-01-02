@@ -3,15 +3,16 @@ import { UserProfileEditor } from "../components/UserProfileEditor";
 import { useUser } from "../hooks/use-user";
 import FamilyTree from "../components/FamilyTree";
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AddFamilyMemberDialog } from "../components/AddFamilyMemberDialog";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Link, useParams, useLocation } from "wouter";
-import {
-  Sheet,
-  SheetContent,
-  SheetTrigger,
-} from "@/components/ui/sheet";
-import { Menu, Link2, ArrowLeft } from "lucide-react";
+import { Menu, Link2, ArrowLeft, UserPlus2 } from "lucide-react";
 import type { MediaItem } from "@db/schema";
 import { MediaDialog } from "../components/MediaDialog";
 import { MediaGallery } from "../components/MediaGallery";
@@ -22,21 +23,18 @@ export default function ProfilePage() {
   const params = useParams();
   const [location, setLocation] = useLocation();
   const [selectedMedia, setSelectedMedia] = useState<MediaItem | null>(null);
+  const [showAddRelationDialog, setShowAddRelationDialog] = useState(false);
 
-  // Get userId from URL params or fall back to current user's ID
   const userId = params.id ? parseInt(params.id) : user?.id;
   const isOwnProfile = userId === user?.id;
 
-  // Query for the profile user's data if it's not the current user
   const { data: profileUser } = useQuery({
     queryKey: ["/api/users", userId],
     enabled: !!userId && !isOwnProfile,
   });
 
-  // Use either the fetched profile user or the current user
   const displayUser = isOwnProfile ? user : profileUser;
 
-  // Query for media where user is tagged
   const { data: taggedMedia = [] } = useQuery<MediaItem[]>({
     queryKey: ["/api/media/tagged", userId],
     queryFn: async () => {
@@ -51,7 +49,6 @@ export default function ProfilePage() {
     enabled: !!userId,
   });
 
-  // Query for media uploaded by the profile user
   const { data: uploadedMedia = [] } = useQuery<MediaItem[]>({
     queryKey: ["/api/media", userId],
     queryFn: async () => {
@@ -66,6 +63,11 @@ export default function ProfilePage() {
     enabled: !!userId,
   });
 
+  const { data: familyRelations = [] } = useQuery({
+    queryKey: ["/api/family", userId],
+    enabled: !!userId && !isOwnProfile,
+  });
+
   const handleLogout = async () => {
     try {
       await logout();
@@ -74,12 +76,15 @@ export default function ProfilePage() {
     }
   };
 
+  const handleAddRelation = () => {
+    setShowAddRelationDialog(true);
+  };
+
   if (!user || !displayUser) {
     return null;
   }
 
   const renderContent = () => {
-    // Use location to determine what to render
     if (location === "/") {
       return <MediaGallery />;
     }
@@ -96,7 +101,6 @@ export default function ProfilePage() {
       );
     }
 
-    // Default profile content
     return (
       <div className="space-y-8">
         {!isOwnProfile && (
@@ -110,7 +114,6 @@ export default function ProfilePage() {
           </Button>
         )}
         <div className="grid gap-8 md:grid-cols-2">
-          {/* Profile Information */}
           <Card>
             <CardHeader>
               <CardTitle>Profile</CardTitle>
@@ -119,20 +122,67 @@ export default function ProfilePage() {
               <div className="space-y-4">
                 <div>
                   <h3 className="text-lg font-medium">Display Name</h3>
-                  <p className="text-muted-foreground">{displayUser.displayName}</p>
+                  <p className="text-muted-foreground">{displayUser?.displayName}</p>
                 </div>
                 <div>
                   <h3 className="text-lg font-medium">Username</h3>
-                  <p className="text-muted-foreground">{displayUser.username}</p>
+                  <p className="text-muted-foreground">{displayUser?.username}</p>
                 </div>
+                {displayUser?.email && (
+                  <div>
+                    <h3 className="text-lg font-medium">Email</h3>
+                    <p className="text-muted-foreground">{displayUser.email}</p>
+                  </div>
+                )}
                 {isOwnProfile && (
                   <UserProfileEditor />
+                )}
+                {!isOwnProfile && (
+                  <div className="pt-4">
+                    <Button
+                      onClick={handleAddRelation}
+                      className="w-full flex items-center gap-2"
+                    >
+                      <UserPlus2 className="h-4 w-4" />
+                      Add Relation
+                    </Button>
+                  </div>
                 )}
               </div>
             </CardContent>
           </Card>
 
-          {/* Uploaded Media */}
+          {!isOwnProfile && (
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>Family Relations</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {familyRelations.length > 0 ? (
+                    familyRelations.map((relation) => (
+                      <div
+                        key={relation.id}
+                        className="flex items-center justify-between p-2 rounded-lg hover:bg-accent"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">
+                            {relation.relationType}
+                          </span>
+                          <span className="text-muted-foreground">
+                            {relation.toUser?.displayName || relation.toUser?.username}
+                          </span>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-muted-foreground">No family relations</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Uploaded Media</CardTitle>
@@ -186,7 +236,6 @@ export default function ProfilePage() {
             </CardContent>
           </Card>
 
-          {/* Tagged Media */}
           <Card className="md:col-span-2">
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Tagged Media</CardTitle>
@@ -327,6 +376,14 @@ export default function ProfilePage() {
       <main className="container mx-auto px-4 py-8">
         {renderContent()}
       </main>
+
+      {showAddRelationDialog && (
+        <AddFamilyMemberDialog
+          open={showAddRelationDialog}
+          onOpenChange={setShowAddRelationDialog}
+          forUserId={userId}
+        />
+      )}
 
       <MediaDialog
         media={selectedMedia}
