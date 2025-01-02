@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { UserProfileEditor } from "../components/UserProfileEditor";
 import { useUser } from "../hooks/use-user";
 import FamilyTree from "../components/FamilyTree";
@@ -20,7 +20,7 @@ import AlbumManager from "../components/AlbumManager";
 export default function ProfilePage() {
   const { user, logout } = useUser();
   const params = useParams();
-  const [, navigate] = useLocation();
+  const [, setLocation] = useLocation();
   const [view, setView] = useState<"gallery" | "tree" | "albums" | null>(null);
   const [selectedMedia, setSelectedMedia] = useState<MediaItem | null>(null);
 
@@ -33,9 +33,6 @@ export default function ProfilePage() {
     queryKey: ["/api/users", userId],
     enabled: !!userId && !isOwnProfile,
   });
-
-  // Use either the fetched profile user or the current user
-  const displayUser = isOwnProfile ? user : profileUser;
 
   // Query for media where user is tagged
   const { data: taggedMedia = [] } = useQuery<MediaItem[]>({
@@ -75,7 +72,19 @@ export default function ProfilePage() {
     }
   };
 
-  if (!displayUser) {
+  // Handle navigation
+  const handleNavigation = (newView: "gallery" | "tree" | "albums" | null) => {
+    if (newView === "gallery") {
+      setLocation("/");
+    } else if (newView === "albums") {
+      setLocation("/albums");
+    } else if (newView === "tree") {
+      setLocation("/family");
+    }
+    setView(newView);
+  };
+
+  if (!user) {
     return null;
   }
 
@@ -87,7 +96,7 @@ export default function ProfilePage() {
         return <AlbumManager />;
       case "tree":
         return <FamilyTree onUserClick={(userId) => {
-          navigate(`/profile/${userId}`);
+          setLocation(`/profile/${userId}`);
           setView(null);
         }} />;
       default:
@@ -98,9 +107,8 @@ export default function ProfilePage() {
                 variant="ghost"
                 className="flex items-center gap-2 text-[#7c6f9f] hover:text-[#7c6f9f]/80 -ml-2"
                 onClick={() => {
-                  navigate("/");
-                  // Set view to "tree" in HomePage
-                  localStorage.setItem("homePageView", "tree");
+                  setLocation("/family");
+                  //localStorage.setItem("homePageView", "tree"); //removed as setLocation handles this now.
                 }}
               >
                 <ArrowLeft className="h-4 w-4" />
@@ -259,30 +267,27 @@ export default function ProfilePage() {
               </SheetTrigger>
               <SheetContent>
                 <nav className="flex flex-col gap-2 pt-4">
-                  <Link href="/">
-                    <Button
-                      variant={view === "gallery" ? "default" : "ghost"}
-                      className="w-full"
-                    >
-                      Media Gallery
-                    </Button>
-                  </Link>
-                  <Link href="/albums">
-                    <Button
-                      variant={view === "albums" ? "default" : "ghost"}
-                      className="w-full"
-                    >
-                      Albums
-                    </Button>
-                  </Link>
-                  <Link href="/family">
-                    <Button
-                      variant={view === "tree" ? "default" : "ghost"}
-                      className="w-full"
-                    >
-                      Family Tree
-                    </Button>
-                  </Link>
+                  <Button
+                    variant={view === "gallery" ? "default" : "ghost"}
+                    className="w-full"
+                    onClick={() => handleNavigation("gallery")}
+                  >
+                    Media Gallery
+                  </Button>
+                  <Button
+                    variant={view === "albums" ? "default" : "ghost"}
+                    className="w-full"
+                    onClick={() => handleNavigation("albums")}
+                  >
+                    Albums
+                  </Button>
+                  <Button
+                    variant={view === "tree" ? "default" : "ghost"}
+                    className="w-full"
+                    onClick={() => handleNavigation("tree")}
+                  >
+                    Family Tree
+                  </Button>
                   <Link href="/profile">
                     <Button
                       variant={!view && isOwnProfile ? "default" : "ghost"}
@@ -299,27 +304,24 @@ export default function ProfilePage() {
             </Sheet>
 
             <nav className="hidden md:flex items-center gap-2">
-              <Link href="/">
-                <Button
-                  variant={view === "gallery" ? "default" : "ghost"}
-                >
-                  Media Gallery
-                </Button>
-              </Link>
-              <Link href="/albums">
-                <Button
-                  variant={view === "albums" ? "default" : "ghost"}
-                >
-                  Albums
-                </Button>
-              </Link>
-              <Link href="/family">
-                <Button
-                  variant={view === "tree" ? "default" : "ghost"}
-                >
-                  Family Tree
-                </Button>
-              </Link>
+              <Button
+                variant={view === "gallery" ? "default" : "ghost"}
+                onClick={() => handleNavigation("gallery")}
+              >
+                Media Gallery
+              </Button>
+              <Button
+                variant={view === "albums" ? "default" : "ghost"}
+                onClick={() => handleNavigation("albums")}
+              >
+                Albums
+              </Button>
+              <Button
+                variant={view === "tree" ? "default" : "ghost"}
+                onClick={() => handleNavigation("tree")}
+              >
+                Family Tree
+              </Button>
               <Link href="/profile">
                 <Button
                   variant={!view && isOwnProfile ? "default" : "ghost"}
