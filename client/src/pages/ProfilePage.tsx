@@ -284,7 +284,10 @@ export default function ProfilePage() {
                     </Button>
                   </Link>
                   <Link href="/profile">
-                    <Button variant="ghost" className="w-full">
+                    <Button
+                      variant={!view && isOwnProfile ? "default" : "ghost"}
+                      className="w-full"
+                    >
                       Profile
                     </Button>
                   </Link>
@@ -318,7 +321,9 @@ export default function ProfilePage() {
                 </Button>
               </Link>
               <Link href="/profile">
-                <Button variant="ghost">
+                <Button
+                  variant={!view && isOwnProfile ? "default" : "ghost"}
+                >
                   Profile
                 </Button>
               </Link>
