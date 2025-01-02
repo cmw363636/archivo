@@ -175,6 +175,41 @@ export function setupAuth(app: Express) {
     }
   });
 
+  app.post("/api/reset-password", async (req, res) => {
+    try {
+      const { username, newPassword } = req.body;
+
+      if (!username || !newPassword) {
+        return res.status(400).send("Username and new password are required");
+      }
+
+      // Find user
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.username, username))
+        .limit(1);
+
+      if (!user) {
+        return res.status(400).send("User not found");
+      }
+
+      // Hash the new password
+      const hashedPassword = await crypto.hash(newPassword);
+
+      // Update the user's password
+      await db
+        .update(users)
+        .set({ password: hashedPassword })
+        .where(eq(users.id, user.id));
+
+      res.json({ message: "Password reset successful" });
+    } catch (error) {
+      console.error("Password reset error:", error);
+      res.status(500).send("Failed to reset password");
+    }
+  });
+
   app.post("/api/logout", (req, res) => {
     req.logout((err) => {
       if (err) {

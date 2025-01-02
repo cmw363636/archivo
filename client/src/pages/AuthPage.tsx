@@ -8,11 +8,13 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 
 export default function AuthPage() {
-  const [isLogin, setIsLogin] = useState(false); // Start with registration view
+  const [isLogin, setIsLogin] = useState(false);
+  const [isResetPassword, setIsResetPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
+  const [newPassword, setNewPassword] = useState("");
   const { login, register } = useUser();
   const { toast } = useToast();
 
@@ -24,7 +26,7 @@ export default function AuthPage() {
         await login({ 
           username, 
           password,
-          displayName: username // This field is required by the schema but not used for login
+          displayName: username
         });
       } else {
         await register({ 
@@ -33,7 +35,6 @@ export default function AuthPage() {
           displayName: displayName || username 
         });
       }
-      // Reset form after successful submission
       setUsername("");
       setPassword("");
       setDisplayName("");
@@ -47,6 +48,104 @@ export default function AuthPage() {
       setIsSubmitting(false);
     }
   };
+
+  const handlePasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    try {
+      const response = await fetch("/api/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, newPassword }),
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+
+      toast({
+        title: "Success",
+        description: "Password has been reset successfully",
+      });
+      setIsResetPassword(false);
+      setIsLogin(true);
+      setUsername("");
+      setNewPassword("");
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (isResetPassword) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-orange-50">
+        <Card className="w-[400px]">
+          <CardHeader>
+            <CardTitle className="text-2xl text-center">Reset Password</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handlePasswordReset} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="username">Username</Label>
+                <Input
+                  id="username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  required
+                  className="bg-white"
+                  disabled={isSubmitting}
+                  placeholder="Enter your username"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="newPassword">New Password</Label>
+                <Input
+                  id="newPassword"
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  required
+                  className="bg-white"
+                  disabled={isSubmitting}
+                  placeholder="Enter your new password"
+                />
+              </div>
+              <Button type="submit" className="w-full" disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Resetting Password...
+                  </>
+                ) : (
+                  "Reset Password"
+                )}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-full"
+                onClick={() => {
+                  setIsResetPassword(false);
+                  setUsername("");
+                  setNewPassword("");
+                }}
+                disabled={isSubmitting}
+              >
+                Back to Login
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-orange-50">
@@ -106,15 +205,28 @@ export default function AuthPage() {
                 isLogin ? "Login" : "Create Account"
               )}
             </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              className="w-full"
-              onClick={() => setIsLogin(!isLogin)}
-              disabled={isSubmitting}
-            >
-              {isLogin ? "Need an account?" : "Already have an account?"}
-            </Button>
+            <div className="flex flex-col gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-full"
+                onClick={() => setIsLogin(!isLogin)}
+                disabled={isSubmitting}
+              >
+                {isLogin ? "Need an account?" : "Already have an account?"}
+              </Button>
+              {isLogin && (
+                <Button
+                  type="button"
+                  variant="link"
+                  className="w-full text-[#7c6f9f]"
+                  onClick={() => setIsResetPassword(true)}
+                  disabled={isSubmitting}
+                >
+                  Forgot Password?
+                </Button>
+              )}
+            </div>
           </form>
         </CardContent>
       </Card>
