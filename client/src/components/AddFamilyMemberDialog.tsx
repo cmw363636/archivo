@@ -9,6 +9,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   Form,
@@ -28,6 +29,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Loader2 } from "lucide-react";
 
 // Schema for adding a new relation
 const addRelationSchema = z.object({
@@ -127,6 +129,9 @@ export function AddFamilyMemberDialog({ open, onOpenChange, forUserId }: Props) 
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Add Family Member</DialogTitle>
+          <DialogDescription>
+            Add a new family member by selecting their relation type and either choosing an existing user or creating a new one.
+          </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -277,7 +282,14 @@ export function AddFamilyMemberDialog({ open, onOpenChange, forUserId }: Props) 
               className="w-full"
               disabled={addRelationMutation.isPending}
             >
-              Add Family Member
+              {addRelationMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Adding Family Member...
+                </>
+              ) : (
+                "Add Family Member"
+              )}
             </Button>
           </form>
         </Form>
