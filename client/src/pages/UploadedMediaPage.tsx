@@ -59,7 +59,7 @@ export default function UploadedMediaPage() {
     <div className="min-h-screen bg-orange-50">
       <header className="bg-white border-b shadow-sm">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-primary">Archivo</h1>
+          <h1 className="text-2xl font-bold text-[#7c6f9f]">Archivo</h1>
 
           <div className="flex items-center gap-4">
             <Sheet>
@@ -129,14 +129,14 @@ export default function UploadedMediaPage() {
             <div className="space-y-4">
               {uploadedMedia.length > 0 ? (
                 uploadedMedia.map((media) => (
-                  <div 
-                    key={media.id} 
+                  <div
+                    key={media.id}
                     className="flex items-center gap-4 p-2 rounded-lg hover:bg-accent cursor-pointer"
                     onClick={() => setSelectedMedia(media)}
                   >
                     {media.type === 'photo' && (
-                      <img 
-                        src={media.url} 
+                      <img
+                        src={media.url}
                         alt={media.title}
                         className="w-16 h-16 object-cover rounded-md"
                       />
