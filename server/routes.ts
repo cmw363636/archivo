@@ -988,7 +988,7 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Add new profile update route
+  // Update user profile route
   app.patch("/api/user/profile", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
@@ -1004,7 +1004,7 @@ export function registerRoutes(app: Express): Server {
           ...(dateOfBirth && { dateOfBirth: new Date(dateOfBirth) }),
           ...(email !== undefined && { email }),
         })
-        .where(eq(users.id, req.userid))
+        .where(eq(users.id, req.user.id))
         .returning();
 
       res.json(updatedUser);

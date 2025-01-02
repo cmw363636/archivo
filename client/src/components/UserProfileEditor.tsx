@@ -109,8 +109,7 @@ export function UserProfileEditor() {
 
   return (
     <div className="space-y-4">
-      {/* Birthday Dialog */}
-      <div>
+      <div className="space-y-2">
         <h3 className="text-lg font-medium">Birthday</h3>
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
           <DialogTrigger asChild>
@@ -147,8 +146,7 @@ export function UserProfileEditor() {
         </Dialog>
       </div>
 
-      {/* Email Dialog */}
-      <div>
+      <div className="space-y-2">
         <h3 className="text-lg font-medium">Email</h3>
         <Dialog open={isEmailOpen} onOpenChange={setIsEmailOpen}>
           <DialogTrigger asChild>
