@@ -904,30 +904,34 @@ export function registerRoutes(app: Express): Server {
         return res.status(400).send("Relation already exists");
       }
 
-      // For grandparent relationships, we need to:
-      // 1. Create the grandparent-grandchild relationship between fromUser and toUser
-      // 2. Create the parent-child relationship between targetUser (if provided) and toUser
-      if (relationType === 'grandparent' && targetUserId) {
-        // Create parent-child relationship between targetUser and toUser
-        await db
-          .insert(familyRelations)
-          .values({
-            fromUserId: toUserId, // grandparent
-            toUserId: targetUserId, // parent
-            relationType: 'parent',
-          });
+      // Step 1: Create the direct parent-child relationship if needed
+      if (relationType === 'parent' || relationType === 'grandparent') {
+        // Create parent-child relationship
+        const directParentId = relationType === 'grandparent' ? fromUserId : toUserId;
+        const directChildId = relationType === 'grandparent' ? targetUserId : fromUserId;
 
-        // Create reciprocal child-parent relationship
-        await db
-          .insert(familyRelations)
-          .values({
-            fromUserId: targetUserId, // parent
-            toUserId: toUserId, // grandparent
-            relationType: 'child',
-          });
+        if (directParentId && directChildId) {
+          // Create parent -> child relation
+          await db
+            .insert(familyRelations)
+            .values({
+              fromUserId: directParentId,
+              toUserId: directChildId,
+              relationType: 'parent',
+            });
+
+          // Create child -> parent relation
+          await db
+            .insert(familyRelations)
+            .values({
+              fromUserId: directChildId,
+              toUserId: directParentId,
+              relationType: 'child',
+            });
+        }
       }
 
-      // Create the main relation
+      // Step 2: Create the main relation
       const [relation] = await db
         .insert(familyRelations)
         .values({
@@ -937,7 +941,7 @@ export function registerRoutes(app: Express): Server {
         })
         .returning();
 
-      // Create the reciprocal relation
+      // Step 3: Create the reciprocal relation
       const reciprocalType = relationTypeMap[relationType as keyof typeof relationTypeMap];
       await db
         .insert(familyRelations)
@@ -947,7 +951,7 @@ export function registerRoutes(app: Express): Server {
           relationType: reciprocalType,
         });
 
-      // If inheritRelations is true, create inherited relationships
+      // Step 4: Handle relation inheritance if requested
       if (inheritRelations) {
         // Get all relations of the target user
         const targetUserRelations = await db.query.familyRelations.findMany({
