@@ -847,8 +847,8 @@ export function registerRoutes(app: Express): Server {
         const [parentChildRelation] = await db
           .insert(familyRelations)
           .values({
-            fromUserId: parentId,    // The parent
-            toUserId: childId,       // The child
+            fromUserId: parentId,    // The new parent
+            toUserId: childId,       // The current user or target user
             relationType: 'parent',
           })
           .returning();
@@ -859,8 +859,8 @@ export function registerRoutes(app: Express): Server {
         const [childParentRelation] = await db
           .insert(familyRelations)
           .values({
-            fromUserId: childId,     // The child
-            toUserId: parentId,      // The parent
+            fromUserId: childId,     // The current user or target user
+            toUserId: parentId,      // The new parent
             relationType: 'child',
           })
           .returning();
@@ -928,8 +928,8 @@ export function registerRoutes(app: Express): Server {
 
       // For all other relationship types
       console.log('Creating non-parent relationship:', {
-        fromId: parentId,
-        toId: childId,
+        fromUserId: childId,
+        toUserId: parentId,
         type: relationType
       });
 
@@ -937,8 +937,8 @@ export function registerRoutes(app: Express): Server {
       const [relation] = await db
         .insert(familyRelations)
         .values({
-          fromUserId: parentId,
-          toUserId: childId,
+          fromUserId: childId,
+          toUserId: parentId,
           relationType,
         })
         .returning();
@@ -950,8 +950,8 @@ export function registerRoutes(app: Express): Server {
       const [reciprocalRelation] = await db
         .insert(familyRelations)
         .values({
-          fromUserId: childId,
-          toUserId: parentId,
+          fromUserId: parentId,
+          toUserId: childId,
           relationType: reciprocalType,
         })
         .returning();
