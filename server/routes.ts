@@ -808,7 +808,8 @@ export function registerRoutes(app: Express): Server {
     }
 
     const { toUserId, relationType, inheritRelations, targetUserId } = req.body;
-    const fromUserId = targetUserId || req.user.id;
+    const childId = targetUserId || req.user.id;
+    const parentId = toUserId;
 
     const validRelationTypes = ['parent', 'child', 'sibling', 'spouse', 'grandparent', 'grandchild', 'aunt/uncle', 'niece/nephew', 'cousin'];
     if (!validRelationTypes.includes(relationType)) {
@@ -829,22 +830,22 @@ export function registerRoutes(app: Express): Server {
 
     try {
       if (relationType === 'parent') {
-        // Create parent -> child relation (toUserId is parent, fromUserId is child)
+        // Create parent -> child relation (parent is fromUser, child is toUser)
         await db
           .insert(familyRelations)
           .values({
-            fromUserId: toUserId, // parent
-            toUserId: fromUserId, // child
+            fromUserId: parentId, // parent
+            toUserId: childId, // child
             relationType: 'parent',
           })
           .onConflictDoNothing();
 
-        // Create child -> parent relation
+        // Create child -> parent relation (child is fromUser, parent is toUser)
         await db
           .insert(familyRelations)
           .values({
-            fromUserId: fromUserId, // child
-            toUserId: toUserId, // parent
+            fromUserId: childId, // child
+            toUserId: parentId, // parent
             relationType: 'child',
           })
           .onConflictDoNothing();
@@ -853,27 +854,34 @@ export function registerRoutes(app: Express): Server {
           // Get all relations of the new parent
           const parentRelations = await db.query.familyRelations.findMany({
             where: or(
-              eq(familyRelations.fromUserId, toUserId),
-              eq(familyRelations.toUserId, toUserId)
+              eq(familyRelations.fromUserId, parentId),
+              eq(familyRelations.toUserId, parentId)
             ),
           });
 
           for (const relation of parentRelations) {
-            const isFromParent = relation.fromUserId === toUserId;
+            const isFromParent = relation.fromUserId === parentId;
             const otherUserId = isFromParent ? relation.toUserId : relation.fromUserId;
             const otherRelationType = isFromParent ? relation.relationType : relationTypeMap[relation.relationType as keyof typeof relationTypeMap];
 
             // Skip if trying to create relation with self
-            if (otherUserId === fromUserId) continue;
+            if (otherUserId === childId) continue;
 
             let inheritedType: string | undefined;
+            let inheritedFromUserId: number;
+            let inheritedToUserId: number;
 
-            // If the parent's relation is a parent, they become a grandparent to the child
+            // If parent's relation is with their parent, they become grandparent to the child
             if (otherRelationType === 'parent') {
               inheritedType = 'grandparent';
-            } else if (otherRelationType === 'sibling') {
-              // If the parent's relation is a sibling, they become an aunt/uncle to the child
+              inheritedFromUserId = otherUserId; // grandparent
+              inheritedToUserId = childId; // child
+            }
+            // If parent's relation is with their sibling, they become aunt/uncle to the child
+            else if (otherRelationType === 'sibling') {
               inheritedType = 'aunt/uncle';
+              inheritedFromUserId = otherUserId; // aunt/uncle
+              inheritedToUserId = childId; // child
             }
 
             if (inheritedType) {
@@ -881,8 +889,8 @@ export function registerRoutes(app: Express): Server {
               await db
                 .insert(familyRelations)
                 .values({
-                  fromUserId: otherUserId,
-                  toUserId: fromUserId,
+                  fromUserId: inheritedFromUserId,
+                  toUserId: inheritedToUserId,
                   relationType: inheritedType,
                 })
                 .onConflictDoNothing();
@@ -892,8 +900,8 @@ export function registerRoutes(app: Express): Server {
               await db
                 .insert(familyRelations)
                 .values({
-                  fromUserId: fromUserId,
-                  toUserId: otherUserId,
+                  fromUserId: inheritedToUserId,
+                  toUserId: inheritedFromUserId,
                   relationType: reciprocalType,
                 })
                 .onConflictDoNothing();
@@ -906,31 +914,32 @@ export function registerRoutes(app: Express): Server {
       }
 
       // For non-parent relationships
-      await db
+      const [relation] = await db
         .insert(familyRelations)
         .values({
-          fromUserId,
-          toUserId,
+          fromUserId: childId,
+          toUserId: parentId,
           relationType,
         })
-        .onConflictDoNothing();
+        .returning();
 
+      // Create the reciprocal relation
       const reciprocalType = relationTypeMap[relationType as keyof typeof relationTypeMap];
       await db
         .insert(familyRelations)
         .values({
-          fromUserId: toUserId,
-          toUserId: fromUserId,
+          fromUserId: parentId,
+          toUserId: childId,
           relationType: reciprocalType,
         })
         .onConflictDoNothing();
 
-      res.json({ message: "Relations created successfully" });
+      res.json(relation);
     } catch (error) {
       console.error('Error creating family relation:', {
         error,
-        fromUserId,
-        toUserId,
+        childId,
+        parentId,
         relationType,
         targetUserId,
         inheritRelations
@@ -1021,7 +1030,7 @@ export function registerRoutes(app: Express): Server {
 
       res.json({ message: "Relations deleted successfully" });
     } catch (error) {
-      consoleerror('Error deleting family relation:', {
+      console.error('Error deleting family relation:', {
         error,
         relationId,
         userId: req.user.id
