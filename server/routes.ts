@@ -830,22 +830,30 @@ export function registerRoutes(app: Express): Server {
 
     try {
       if (relationType === 'parent') {
-        // Create parent -> child relation (parent is fromUser, child is toUser)
+        // For parent relationship:
+        // parent (parentId) is fromUser, child (childId) is toUser
+        // When User 2 is parent of User 1:
+        // fromUserId: User 2 (parentId)
+        // toUserId: User 1 (childId)
         await db
           .insert(familyRelations)
           .values({
-            fromUserId: parentId, // parent
-            toUserId: childId, // child
+            fromUserId: parentId,
+            toUserId: childId,
             relationType: 'parent',
           })
           .onConflictDoNothing();
 
-        // Create child -> parent relation (child is fromUser, parent is toUser)
+        // For child relationship (reciprocal):
+        // child (childId) is fromUser, parent (parentId) is toUser
+        // When User 1 is child of User 2:
+        // fromUserId: User 1 (childId)
+        // toUserId: User 2 (parentId)
         await db
           .insert(familyRelations)
           .values({
-            fromUserId: childId, // child
-            toUserId: parentId, // parent
+            fromUserId: childId,
+            toUserId: parentId,
             relationType: 'child',
           })
           .onConflictDoNothing();
@@ -868,41 +876,48 @@ export function registerRoutes(app: Express): Server {
             if (otherUserId === childId) continue;
 
             let inheritedType: string | undefined;
-            let inheritedFromUserId: number;
-            let inheritedToUserId: number;
 
             // If parent's relation is with their parent, they become grandparent to the child
             if (otherRelationType === 'parent') {
-              inheritedType = 'grandparent';
-              inheritedFromUserId = otherUserId; // grandparent
-              inheritedToUserId = childId; // child
-            }
-            // If parent's relation is with their sibling, they become aunt/uncle to the child
-            else if (otherRelationType === 'sibling') {
-              inheritedType = 'aunt/uncle';
-              inheritedFromUserId = otherUserId; // aunt/uncle
-              inheritedToUserId = childId; // child
-            }
-
-            if (inheritedType) {
-              // Create other user -> child relation
+              // Create grandparent -> child relation
               await db
                 .insert(familyRelations)
                 .values({
-                  fromUserId: inheritedFromUserId,
-                  toUserId: inheritedToUserId,
-                  relationType: inheritedType,
+                  fromUserId: otherUserId, // grandparent
+                  toUserId: childId, // child
+                  relationType: 'grandparent',
                 })
                 .onConflictDoNothing();
 
-              // Create child -> other user relation
-              const reciprocalType = relationTypeMap[inheritedType as keyof typeof relationTypeMap];
+              // Create child -> grandparent relation
               await db
                 .insert(familyRelations)
                 .values({
-                  fromUserId: inheritedToUserId,
-                  toUserId: inheritedFromUserId,
-                  relationType: reciprocalType,
+                  fromUserId: childId, // child
+                  toUserId: otherUserId, // grandparent
+                  relationType: 'grandchild',
+                })
+                .onConflictDoNothing();
+            }
+            // If parent's relation is with their sibling, they become aunt/uncle to the child
+            else if (otherRelationType === 'sibling') {
+              // Create aunt/uncle -> child relation
+              await db
+                .insert(familyRelations)
+                .values({
+                  fromUserId: otherUserId, // aunt/uncle
+                  toUserId: childId, // child
+                  relationType: 'aunt/uncle',
+                })
+                .onConflictDoNothing();
+
+              // Create child -> aunt/uncle relation
+              await db
+                .insert(familyRelations)
+                .values({
+                  fromUserId: childId, // child
+                  toUserId: otherUserId, // aunt/uncle
+                  relationType: 'niece/nephew',
                 })
                 .onConflictDoNothing();
             }
