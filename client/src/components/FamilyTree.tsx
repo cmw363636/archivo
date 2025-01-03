@@ -187,14 +187,16 @@ function FamilyTree({ onUserClick }: FamilyTreeProps) {
 
   const addRelationMutation = useMutation({
     mutationFn: async (data: { toUserId: number; relationType: string }) => {
-      // When adding a parent, toUserId is the parent's ID and targetUserId (if present) is the child's ID
+      // When adding a parent relationship:
+      // toUserId: the ID of the user we want to be our parent
+      // targetUserId: the ID of the child (current user or selected member)
       const response = await fetch("/api/family", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          toUserId: data.toUserId, // this is the ID of the user we're adding as a relation
+          parentId: data.toUserId,
           relationType: data.relationType,
-          targetUserId: selectedMember?.id, // if viewing someone else's profile, this is their ID
+          targetUserId: selectedMember?.id,
           inheritRelations: true
         }),
         credentials: "include",
