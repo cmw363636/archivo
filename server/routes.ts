@@ -14,13 +14,11 @@ import { promisify } from 'util';
 
 const scryptAsync = promisify(scrypt);
 
-// Ensure uploads directory exists
 const uploadDir = path.join(process.cwd(), 'uploads');
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-// Configure multer for file uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, uploadDir);
@@ -34,31 +32,26 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 export function registerRoutes(app: Express): Server {
-  // Setup auth routes first
   setupAuth(app);
 
-  // Enable CORS pre-flight
   app.options('/uploads/:filename', (req, res) => {
     res.header('Access-Control-Allow-Origin', '*');
     res.header('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
     res.header('Access-Control-Allow-Headers', 'Range, Accept-Ranges, Content-Range, Content-Type');
-    res.header('Access-Control-Max-Age', '86400'); // 24 hours
+    res.header('Access-Control-Max-Age', '86400'); 
     res.status(204).send();
   });
 
-  // Media streaming handler with improved error handling and CORS
   app.get('/uploads/:filename', (req, res) => {
     try {
       const filename = req.params.filename;
       const filePath = path.resolve(uploadDir, filename);
 
-      // Security check: ensure the file path is within uploads directory
       if (!filePath.startsWith(uploadDir)) {
         console.error('Invalid file path access attempt:', filePath);
         return res.status(403).send('Access denied');
       }
 
-      // Check if file exists and is readable
       try {
         fs.accessSync(filePath, fs.constants.R_OK);
       } catch (error) {
@@ -66,12 +59,10 @@ export function registerRoutes(app: Express): Server {
         return res.status(404).send('File not found or not accessible');
       }
 
-      // Get file stats
       const stat = fs.statSync(filePath);
       const fileSize = stat.size;
       const mimeType = mime.lookup(filePath) || 'application/octet-stream';
 
-      // Set common headers
       const headers = {
         'Content-Type': mimeType,
         'Accept-Ranges': 'bytes',
@@ -83,7 +74,6 @@ export function registerRoutes(app: Express): Server {
         'Pragma': 'no-cache'
       };
 
-      // Handle range requests (for video/audio streaming)
       const range = req.headers.range;
       if (range) {
         const parts = range.replace(/bytes=/, "").split("-");
@@ -148,7 +138,6 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Media upload endpoint with improved error handling and logging
   app.post("/api/media", upload.single('file'), async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
@@ -159,11 +148,9 @@ export function registerRoutes(app: Express): Server {
     try {
       let url = '';
 
-      // For post type, file is optional
       if (type === 'post') {
         url = req.file ? `/uploads/${req.file.filename}` : '';
 
-        // If there's a file, verify it was written correctly
         if (req.file) {
           const stats = await fs.promises.stat(req.file.path);
           console.log('File stats:', {
@@ -173,17 +160,14 @@ export function registerRoutes(app: Express): Server {
             gid: stats.gid
           });
 
-          // Ensure file permissions allow reading
           await fs.promises.chmod(req.file.path, 0o644);
         }
       } else {
-        // For other types, file is required
         if (!req.file) {
           return res.status(400).send("No file uploaded");
         }
         url = `/uploads/${req.file.filename}`;
 
-        // Verify file was written correctly
         const stats = await fs.promises.stat(req.file.path);
         console.log('File stats:', {
           size: stats.size,
@@ -192,7 +176,6 @@ export function registerRoutes(app: Express): Server {
           gid: stats.gid
         });
 
-        // Ensure file permissions allow reading
         await fs.promises.chmod(req.file.path, 0o644);
       }
 
@@ -223,7 +206,6 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Media endpoints
   app.get("/api/media", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
@@ -235,7 +217,6 @@ export function registerRoutes(app: Express): Server {
       const uploadedOnly = req.query.uploaded === 'true';
 
       if (uploadedOnly) {
-        // If uploaded=true, only get media directly uploaded by the user
         const userMedia = await db.query.mediaItems.findMany({
           where: albumId
             ? and(
@@ -251,7 +232,6 @@ export function registerRoutes(app: Express): Server {
         return res.json(userMedia);
       }
 
-      // Otherwise, get both uploaded and tagged media
       const userMedia = await db.query.mediaItems.findMany({
         where: albumId
           ? and(
@@ -276,12 +256,10 @@ export function registerRoutes(app: Express): Server {
         },
       });
 
-      // Combine and deduplicate the results
       const taggedMediaItems = taggedMedia.map(tag => tag.mediaItem);
       const allMedia = [...userMedia, ...taggedMediaItems];
       const uniqueMedia = Array.from(new Map(allMedia.map(item => [item.id, item])).values());
 
-      // Sort by creation date
       uniqueMedia.sort((a, b) =>
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
@@ -294,7 +272,6 @@ export function registerRoutes(app: Express): Server {
   });
 
 
-  // Add new endpoint to fetch media where user is tagged
   app.get("/api/media/tagged", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
@@ -314,7 +291,6 @@ export function registerRoutes(app: Express): Server {
         },
       });
 
-      // Transform the response to match the MediaItem type
       const mediaItems = taggedMedia.map(tag => tag.mediaItem);
 
       res.json(mediaItems);
@@ -324,7 +300,6 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Add media update endpoint
   app.patch("/api/media/:mediaId", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
@@ -334,7 +309,6 @@ export function registerRoutes(app: Express): Server {
     const { title, description, mediaDate } = req.body;
 
     try {
-      // Check if the media item exists and belongs to the user
       const [mediaItem] = await db
         .select()
         .from(mediaItems)
@@ -350,7 +324,6 @@ export function registerRoutes(app: Express): Server {
         return res.status(404).send("Media item not found or unauthorized");
       }
 
-      // Update the media item
       const [updatedItem] = await db
         .update(mediaItems)
         .set({
@@ -368,7 +341,6 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Add media delete endpoint
   app.delete("/api/media/:mediaId", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
@@ -377,7 +349,6 @@ export function registerRoutes(app: Express): Server {
     const { mediaId } = req.params;
 
     try {
-      // Check if the media item exists and belongs to the user
       const [mediaItem] = await db
         .select()
         .from(mediaItems)
@@ -393,24 +364,20 @@ export function registerRoutes(app: Express): Server {
         return res.status(404).send("Media item not found or unauthorized");
       }
 
-      // Delete any associated tags first
       await db
         .delete(mediaTags)
         .where(eq(mediaTags.mediaId, parseInt(mediaId)));
 
-      // Delete the media item
       await db
         .delete(mediaItems)
         .where(eq(mediaItems.id, parseInt(mediaId)));
 
-      // If there's a file associated, delete it
       if (mediaItem.url && mediaItem.url.startsWith('/uploads/')) {
         const filePath = path.join(process.cwd(), mediaItem.url.slice(1));
         try {
           await fs.promises.unlink(filePath);
         } catch (error) {
           console.error('Error deleting file:', error);
-          // Continue even if file deletion fails
         }
       }
 
@@ -421,7 +388,6 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Get tags for a media item
   app.get("/api/media/:mediaId/tags", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
@@ -444,7 +410,6 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Add a tag to a media item
   app.post("/api/media/:mediaId/tags", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
@@ -454,7 +419,6 @@ export function registerRoutes(app: Express): Server {
     const { userId } = req.body;
 
     try {
-      // Check if tag already exists
       const [existingTag] = await db
         .select()
         .from(mediaTags)
@@ -485,7 +449,6 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Remove a tag from a media item
   app.delete("/api/media/:mediaId/tags/:userId", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
@@ -510,7 +473,6 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Users endpoint (add before albums endpoints)
   app.get("/api/users", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
@@ -532,14 +494,12 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Albums endpoints
   app.get("/api/albums", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
     }
 
     try {
-      // Get user's created albums with media items and members count
       const userAlbums = await db.query.albums.findMany({
         where: eq(albums.createdBy, req.user.id),
         with: {
@@ -557,7 +517,6 @@ export function registerRoutes(app: Express): Server {
         }
       });
 
-      // Get shared albums with media items and members count
       const sharedAlbums = await db.query.albumMembers.findMany({
         where: eq(albumMembers.userId, req.user.id),
         with: {
@@ -579,10 +538,8 @@ export function registerRoutes(app: Express): Server {
         }
       });
 
-      // Format shared albums to match user albums structure
       const formattedSharedAlbums = sharedAlbums.map(({ album }) => album);
 
-      // Combine and return all albums
       const allAlbums = [...userAlbums, ...formattedSharedAlbums];
 
       res.json(allAlbums);
@@ -620,7 +577,6 @@ export function registerRoutes(app: Express): Server {
     const { albumId } = req.params;
     const { userId, canEdit } = req.body;
 
-    // Check if user has permission to add members
     const [album] = await db
       .select()
       .from(albums)
@@ -643,7 +599,6 @@ export function registerRoutes(app: Express): Server {
     res.json(member);
   });
 
-  // Add member removal endpoint
   app.delete("/api/albums/:albumId/members/:userId", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
@@ -652,7 +607,6 @@ export function registerRoutes(app: Express): Server {
     const { albumId, userId } = req.params;
 
     try {
-      // Check if user has permission to remove members
       const [album] = await db
         .select()
         .from(albums)
@@ -667,7 +621,6 @@ export function registerRoutes(app: Express): Server {
         return res.status(403).send("Not authorized to remove members from this album");
       }
 
-      // Remove the member from the album
       await db
         .delete(albumMembers)
         .where(
@@ -684,7 +637,6 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Add media to album endpoint
   app.post("/api/albums/:albumId/media/:mediaId", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
@@ -693,7 +645,6 @@ export function registerRoutes(app: Express): Server {
     const { albumId, mediaId } = req.params;
 
     try {
-      // Check if user has permission to add media to this album
       const [album] = await db
         .select()
         .from(albums)
@@ -704,7 +655,6 @@ export function registerRoutes(app: Express): Server {
         return res.status(404).send("Album not found");
       }
 
-      // Check if user is album creator or has edit permissions
       const [member] = album.createdBy === req.user.id
         ? [true]
         : await db
@@ -723,7 +673,6 @@ export function registerRoutes(app: Express): Server {
         return res.status(403).send("Not authorized to add media to this album");
       }
 
-      // Update the media item to be part of this album
       await db
         .update(mediaItems)
         .set({ albumId: parseInt(albumId) })
@@ -741,7 +690,6 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Add remove media from album endpoint
   app.delete("/api/albums/:albumId/media/:mediaId", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
@@ -750,7 +698,6 @@ export function registerRoutes(app: Express): Server {
     const { albumId, mediaId } = req.params;
 
     try {
-      // Check if user has permission to remove media from this album
       const [album] = await db
         .select()
         .from(albums)
@@ -761,7 +708,6 @@ export function registerRoutes(app: Express): Server {
         return res.status(404).send("Album not found");
       }
 
-      // Check if user is album creator or has edit permissions
       const [member] = album.createdBy === req.user.id
         ? [true]
         : await db
@@ -780,7 +726,6 @@ export function registerRoutes(app: Express): Server {
         return res.status(403).send("Not authorized to remove media from this album");
       }
 
-      // Remove media from album by setting albumId to null
       await db
         .update(mediaItems)
         .set({ albumId: null })
@@ -798,7 +743,6 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Add delete album endpoint
   app.delete("/api/albums/:albumId", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
@@ -807,7 +751,6 @@ export function registerRoutes(app: Express): Server {
     const { albumId } = req.params;
 
     try {
-      // Check if user has permission to delete this album
       const [album] = await db
         .select()
         .from(albums)
@@ -822,7 +765,6 @@ export function registerRoutes(app: Express): Server {
         return res.status(403).send("Not authorized to delete this album");
       }
 
-      // Delete the album
       await db
         .delete(albums)
         .where(eq(albums.id, parseInt(albumId)));
@@ -834,7 +776,6 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Family relations endpoints
   app.get("/api/family", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
@@ -869,7 +810,6 @@ export function registerRoutes(app: Express): Server {
     const { toUserId, relationType, inheritRelations, targetUserId } = req.body;
     const fromUserId = targetUserId || req.user.id;
 
-    // Validate relation type
     const validRelationTypes = ['parent', 'child', 'sibling', 'spouse', 'grandparent', 'grandchild', 'aunt/uncle', 'niece/nephew', 'cousin'];
     if (!validRelationTypes.includes(relationType)) {
       return res.status(400).send("Invalid relation type");
@@ -888,7 +828,6 @@ export function registerRoutes(app: Express): Server {
     } as const;
 
     try {
-      // Check if relation already exists
       const [existingRelation] = await db
         .select()
         .from(familyRelations)
@@ -904,34 +843,70 @@ export function registerRoutes(app: Express): Server {
         return res.status(400).send("Relation already exists");
       }
 
-      // Step 1: Create the direct parent-child relationship if needed
-      if (relationType === 'parent' || relationType === 'grandparent') {
-        // Create parent-child relationship
-        const directParentId = relationType === 'grandparent' ? fromUserId : toUserId;
-        const directChildId = relationType === 'grandparent' ? targetUserId : fromUserId;
+      if (relationType === 'parent') {
+        await db
+          .insert(familyRelations)
+          .values({
+            fromUserId: toUserId, 
+            toUserId: fromUserId, 
+            relationType: 'parent',
+          });
 
-        if (directParentId && directChildId) {
-          // Create parent -> child relation
-          await db
-            .insert(familyRelations)
-            .values({
-              fromUserId: directParentId,
-              toUserId: directChildId,
-              relationType: 'parent',
-            });
+        await db
+          .insert(familyRelations)
+          .values({
+            fromUserId: fromUserId, 
+            toUserId: toUserId, 
+            relationType: 'child',
+          });
 
-          // Create child -> parent relation
-          await db
-            .insert(familyRelations)
-            .values({
-              fromUserId: directChildId,
-              toUserId: directParentId,
-              relationType: 'child',
-            });
+        if (inheritRelations) {
+          const parentRelations = await db.query.familyRelations.findMany({
+            where: or(
+              eq(familyRelations.fromUserId, toUserId),
+              eq(familyRelations.toUserId, toUserId)
+            ),
+          });
+
+          for (const relation of parentRelations) {
+            const isFromParent = relation.fromUserId === toUserId;
+            const otherUserId = isFromParent ? relation.toUserId : relation.fromUserId;
+            const relationType = isFromParent ? relation.relationType : relationTypeMap[relation.relationType as keyof typeof relationTypeMap];
+
+            if (otherUserId === fromUserId) continue;
+
+            let inheritedType: string | undefined;
+            if (relationType === 'parent') {
+              inheritedType = 'grandparent';
+            } else if (relationType === 'sibling') {
+              inheritedType = 'aunt/uncle';
+            }
+
+            if (inheritedType) {
+              await db
+                .insert(familyRelations)
+                .values({
+                  fromUserId: otherUserId,
+                  toUserId: fromUserId,
+                  relationType: inheritedType,
+                });
+
+              const reciprocalType = relationTypeMap[inheritedType as keyof typeof relationTypeMap];
+              await db
+                .insert(familyRelations)
+                .values({
+                  fromUserId: fromUserId,
+                  toUserId: otherUserId,
+                  relationType: reciprocalType,
+                });
+            }
+          }
         }
+
+        res.json({ message: "Relations created successfully" });
+        return;
       }
 
-      // Step 2: Create the main relation
       const [relation] = await db
         .insert(familyRelations)
         .values({
@@ -941,7 +916,6 @@ export function registerRoutes(app: Express): Server {
         })
         .returning();
 
-      // Step 3: Create the reciprocal relation
       const reciprocalType = relationTypeMap[relationType as keyof typeof relationTypeMap];
       await db
         .insert(familyRelations)
@@ -951,72 +925,6 @@ export function registerRoutes(app: Express): Server {
           relationType: reciprocalType,
         });
 
-      // Step 4: Handle relation inheritance if requested
-      if (inheritRelations) {
-        // Get all relations of the target user
-        const targetUserRelations = await db.query.familyRelations.findMany({
-          where: or(
-            eq(familyRelations.fromUserId, toUserId),
-            eq(familyRelations.toUserId, toUserId)
-          ),
-        });
-
-        for (const rel of targetUserRelations) {
-          const isFromTarget = rel.fromUserId === toUserId;
-          const otherUserId = isFromTarget ? rel.toUserId : rel.fromUserId;
-          const otherUserRelationType = isFromTarget ? rel.relationType : reciprocalType;
-
-          // Skip if trying to create relation with self
-          if (otherUserId === fromUserId) continue;
-
-          // Determine inherited relation type
-          let inheritedType: string | undefined;
-          if (relationType === 'parent') {
-            if (otherUserRelationType === 'parent') inheritedType = 'grandparent';
-            if (otherUserRelationType === 'sibling') inheritedType = 'aunt/uncle';
-            if (otherUserRelationType === 'child') inheritedType = 'cousin';
-          } else if (relationType === 'child') {
-            if (otherUserRelationType === 'child') inheritedType = 'grandchild';
-            if (otherUserRelationType === 'sibling') inheritedType = 'niece/nephew';
-          }
-
-          if (inheritedType) {
-            // Check if inherited relation already exists
-            const [existingInherited] = await db
-              .select()
-              .from(familyRelations)
-              .where(
-                and(
-                  eq(familyRelations.fromUserId, fromUserId),
-                  eq(familyRelations.toUserId, otherUserId)
-                )
-              )
-              .limit(1);
-
-            if (!existingInherited) {
-              // Create inherited relation
-              await db
-                .insert(familyRelations)
-                .values({
-                  fromUserId,
-                  toUserId: otherUserId,
-                  relationType: inheritedType,
-                });
-
-              // Create reciprocal inherited relation
-              const reciprocalInheritedType = relationTypeMap[inheritedType as keyof typeof relationTypeMap];
-              await db
-                .insert(familyRelations)
-                .values({
-                  fromUserId: otherUserId,
-                  toUserId: fromUserId,
-                  relationType: reciprocalInheritedType,
-                });
-            }
-          }
-        }
-      }
-
       res.json(relation);
     } catch (error) {
       console.error('Error creating family relation:', error);
@@ -1024,13 +932,11 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Create new family member endpoint
   app.post("/api/family/create-member", async (req, res) => {
     try {
       const { username, password, displayName, email, birthday } = req.body;
       const autoLogin = req.query.autoLogin !== 'false';
 
-      // Check if user already exists
       const [existingUser] = await db
         .select()
         .from(users)
@@ -1041,12 +947,10 @@ export function registerRoutes(app: Express): Server {
         return res.status(400).send("Username already exists");
       }
 
-      // Hash the password
       const salt = randomBytes(16).toString("hex");
       const buf = (await scryptAsync(password, salt, 64)) as Buffer;
       const hashedPassword = `${buf.toString("hex")}.${salt}`;
 
-      // Create the new user
       const [newUser] = await db
         .insert(users)
         .values({
@@ -1058,7 +962,6 @@ export function registerRoutes(app: Express): Server {
         })
         .returning();
 
-      // Only log in the user if autoLogin is true
       if (autoLogin) {
         req.login(newUser, (err) => {
           if (err) {
@@ -1076,7 +979,6 @@ export function registerRoutes(app: Express): Server {
           });
         });
       } else {
-        // Return user info without logging them in
         return res.json({
           message: "Family member created successfully",
           user: {
@@ -1101,7 +1003,6 @@ export function registerRoutes(app: Express): Server {
     const { relationId } = req.params;
 
     try {
-      // Check if the user has permission to delete this relation
       const [relation] = await db
         .select()
         .from(familyRelations)
@@ -1112,7 +1013,6 @@ export function registerRoutes(app: Express): Server {
         return res.status(404).send("Relation not found");
       }
 
-      // Only allow users to delete relations they're part of
       if (relation.fromUserId !== req.user.id && relation.toUserId !== req.user.id) {
         return res.status(403).send("Not authorized to delete this relation");
       }
@@ -1128,7 +1028,6 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Update user profile route
   app.patch("/api/user/profile", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
@@ -1137,7 +1036,6 @@ export function registerRoutes(app: Express): Server {
     const { dateOfBirth, email } = req.body;
 
     try {
-      // Update user profile
       const [updatedUser] = await db
         .update(users)
         .set({

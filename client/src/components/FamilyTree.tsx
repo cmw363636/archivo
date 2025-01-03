@@ -187,14 +187,13 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
 
   const addRelationMutation = useMutation({
     mutationFn: async (data: { toUserId: number; relationType: string }) => {
-      // If adding a grandparent relationship and we're viewing another user's profile,
-      // include the targetUserId to establish proper parent-child relationship
+      // When adding a parent to another user's profile, we're viewing their profile
       const response = await fetch("/api/family", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...data,
-          targetUserId: selectedMember?.id, // Include the current profile's user ID for grandparent relations
+          targetUserId: selectedMember?.id, // Include the current profile's user ID for parent relations
           inheritRelations: true
         }),
         credentials: "include",
@@ -381,31 +380,37 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
   const familyGroups = relations.reduce((acc, relation) => {
     const isFromUser = relation.fromUserId === user.id;
     const member = isFromUser ? relation.toUser : relation.fromUser;
-    let type = isFromUser
+    const relationType = isFromUser
       ? relation.relationType
       : relationTypeMap[relation.relationType as keyof typeof relationTypeMap];
 
-    // Handle inherited relationships
-    if (type.includes('grand')) {
-      // Place grandparents in the parents group but with additional vertical offset
-      type = type.replace('grand', '');
-    } else if (type === 'aunt/uncle') {
-      // Place aunts/uncles in the parents' sibling group
-      type = 'parent-sibling';
-    } else if (type === 'niece/nephew') {
-      // Place nieces/nephews in the children's sibling group
-      type = 'child-sibling';
-    } else if (type === 'cousin') {
-      // Place cousins in a separate group at the same level as the user
-      type = 'cousin';
+    // Skip if this is an inherited relationship that will be handled by the parent relationship
+    if (relationType === 'grandchild' || relationType === 'aunt/uncle' || relationType === 'niece/nephew') {
+      return acc;
     }
 
-    if (!acc[type]) {
-      acc[type] = [];
+    let groupType = relationType;
+
+    // For parent relationships, check if there's a grandparent relationship
+    if (relationType === 'parent') {
+      const hasGrandparentRelation = relations.some(r => 
+        (r.fromUserId === member.id && r.toUserId === user.id && r.relationType === 'grandparent') ||
+        (r.toUserId === member.id && r.fromUserId === user.id && r.relationType === 'grandchild')
+      );
+
+      if (hasGrandparentRelation) {
+        groupType = 'grandparent';
+      }
     }
-    if (!acc[type].some(m => m.id === member.id)) {
-      acc[type].push(member);
+
+    if (!acc[groupType]) {
+      acc[groupType] = [];
     }
+
+    if (!acc[groupType].some(m => m.id === member.id)) {
+      acc[groupType].push(member);
+    }
+
     return acc;
   }, {} as Record<string, FamilyMember[]>);
 
@@ -660,9 +665,9 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
         );
 
 
+
       });
     }
-
 
 
     // Render cousins
