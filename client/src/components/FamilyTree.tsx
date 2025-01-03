@@ -187,11 +187,14 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
 
   const addRelationMutation = useMutation({
     mutationFn: async (data: { toUserId: number; relationType: string }) => {
+      // If adding a grandparent relationship and we're viewing another user's profile,
+      // include the targetUserId to establish proper parent-child relationship
       const response = await fetch("/api/family", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...data,
+          targetUserId: selectedMember?.id, // Include the current profile's user ID for grandparent relations
           inheritRelations: true
         }),
         credentials: "include",
@@ -210,7 +213,7 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
       setRelationType("");
       toast({
         title: "Success",
-        description: "Family relation and inherited relationships added successfully",
+        description: "Family relation added successfully",
       });
     },
     onError: (error: Error) => {
@@ -369,8 +372,8 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
     );
   }
 
-  const treeWidth = 2400; 
-  const treeHeight = 1600; 
+  const treeWidth = 2400;
+  const treeHeight = 1600;
   const nodeRadius = 40;
   const verticalSpacing = 150;
   const horizontalSpacing = 200;
@@ -417,7 +420,7 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
       const parentWidth = horizontalSpacing * (familyGroups.parent.length - 1);
       familyGroups.parent.forEach((parent, i) => {
         // Check if this parent has a parent-child relationship in our relations
-        const isGrandparent = relations.some(r => 
+        const isGrandparent = relations.some(r =>
           (r.fromUserId === parent.id && r.toUserId === user.id && r.relationType === 'grandparent') ||
           (r.toUserId === parent.id && r.fromUserId === user.id && r.relationType === 'grandchild')
         );
@@ -466,7 +469,7 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
 
         // If grandparent, draw line to parent
         if (isGrandparent) {
-          const parentRelation = relations.find(r => 
+          const parentRelation = relations.find(r =>
             (r.fromUserId === parent.id && r.relationType === 'parent') ||
             (r.toUserId === parent.id && r.relationType === 'child')
           );
@@ -656,33 +659,10 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
           </g>
         );
 
-        if (i > 0) {
-          //siblingLines.push( //Removed as it was causing redundancy
-            //<g key={`sibling-connection-${i}`}>
-              //<line
-                //x1={siblingStartX + ((i - 1) * horizontalSpacing) + nodeRadius}
-                //y1={centerY}
-                //x2={x - nodeRadius}
-                //y2={y}
-                //stroke="hsl(var(--border))"
-                //strokeWidth="2"
-                //pointerEvents="none"
-              ///>
-              //<text
-                //x={(siblingStartX + ((i - 1) * horizontalSpacing) + x) / 2}
-                //y={y - 10}
-                //textAnchor="middle"
-                //fill="hsl(var(--muted-foreground))"
-                //className="text-xs"
-                //pointerEvents="none"
-              //>
-                //Sibling
-              //</text>
-            //</g>
-          //);
-        }
+
       });
     }
+
 
 
     // Render cousins
@@ -1034,8 +1014,7 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
                   disabled={!selectedRelativeMemberId || !relationType}
                   onClick={handleAddRelation}
                 >
-                  Add Relation
-                </Button>
+                  Add Relation                </Button>
               </div>
             )}
           </div>

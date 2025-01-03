@@ -866,8 +866,8 @@ export function registerRoutes(app: Express): Server {
       return res.status(401).send("Not authenticated");
     }
 
-    const { toUserId, relationType, inheritRelations } = req.body;
-    const fromUserId = req.user.id;
+    const { toUserId, relationType, inheritRelations, targetUserId } = req.body;
+    const fromUserId = targetUserId || req.user.id;
 
     // Validate relation type
     const validRelationTypes = ['parent', 'child', 'sibling', 'spouse', 'grandparent', 'grandchild', 'aunt/uncle', 'niece/nephew', 'cousin'];
@@ -904,7 +904,30 @@ export function registerRoutes(app: Express): Server {
         return res.status(400).send("Relation already exists");
       }
 
-      // Create the family relation
+      // For grandparent relationships, we need to:
+      // 1. Create the grandparent-grandchild relationship between fromUser and toUser
+      // 2. Create the parent-child relationship between targetUser (if provided) and toUser
+      if (relationType === 'grandparent' && targetUserId) {
+        // Create parent-child relationship between targetUser and toUser
+        await db
+          .insert(familyRelations)
+          .values({
+            fromUserId: toUserId, // grandparent
+            toUserId: targetUserId, // parent
+            relationType: 'parent',
+          });
+
+        // Create reciprocal child-parent relationship
+        await db
+          .insert(familyRelations)
+          .values({
+            fromUserId: targetUserId, // parent
+            toUserId: toUserId, // grandparent
+            relationType: 'child',
+          });
+      }
+
+      // Create the main relation
       const [relation] = await db
         .insert(familyRelations)
         .values({
@@ -916,7 +939,6 @@ export function registerRoutes(app: Express): Server {
 
       // Create the reciprocal relation
       const reciprocalType = relationTypeMap[relationType as keyof typeof relationTypeMap];
-
       await db
         .insert(familyRelations)
         .values({
@@ -979,7 +1001,6 @@ export function registerRoutes(app: Express): Server {
 
               // Create reciprocal inherited relation
               const reciprocalInheritedType = relationTypeMap[inheritedType as keyof typeof relationTypeMap];
-
               await db
                 .insert(familyRelations)
                 .values({
