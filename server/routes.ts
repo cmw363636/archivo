@@ -875,6 +875,13 @@ export function registerRoutes(app: Express): Server {
       return res.status(400).send("Invalid relation type");
     }
 
+    const reciprocalRelationFor = {
+      parent: 'child',
+      child: 'parent',
+      sibling: 'sibling',
+      spouse: 'spouse'
+    } as const;
+
     try {
       // Check if relation already exists
       const [existingRelation] = await db
@@ -903,21 +910,7 @@ export function registerRoutes(app: Express): Server {
         .returning();
 
       // Create the reciprocal relation
-      let reciprocalType;
-      switch (relationType) {
-        case 'parent':
-          reciprocalType = 'child';
-          break;
-        case 'child':
-          reciprocalType = 'parent';
-          break;
-        case 'sibling':
-          reciprocalType = 'sibling';
-          break;
-        case 'spouse':
-          reciprocalType = 'spouse';
-          break;
-      }
+      const reciprocalType = reciprocalRelationFor[relationType as keyof typeof reciprocalRelationFor];
 
       await db
         .insert(familyRelations)
@@ -946,14 +939,14 @@ export function registerRoutes(app: Express): Server {
           if (otherUserId === fromUserId) continue;
 
           // Determine inherited relation type
-          let inheritedType;
+          let inheritedType: string | undefined;
           if (relationType === 'parent') {
-            if (otherUserRelationType === 'parent') inheritedType = 'parent'; // grandparent
-            if (otherUserRelationType === 'sibling') inheritedType = 'parent'; // aunt/uncle
-            if (otherUserRelationType === 'child') inheritedType = 'sibling'; // cousin
+            if (otherUserRelationType === 'parent') inheritedType = 'grandparent';
+            if (otherUserRelationType === 'sibling') inheritedType = 'aunt/uncle';
+            if (otherUserRelationType === 'child') inheritedType = 'cousin';
           } else if (relationType === 'child') {
-            if (otherUserRelationType === 'child') inheritedType = 'child'; // grandchild
-            if (otherUserRelationType === 'sibling') inheritedType = 'child'; // niece/nephew
+            if (otherUserRelationType === 'child') inheritedType = 'grandchild';
+            if (otherUserRelationType === 'sibling') inheritedType = 'niece/nephew';
           }
 
           if (inheritedType) {
@@ -980,18 +973,7 @@ export function registerRoutes(app: Express): Server {
                 });
 
               // Create reciprocal inherited relation
-              let reciprocalInheritedType;
-              switch (inheritedType) {
-                case 'parent':
-                  reciprocalInheritedType = 'child';
-                  break;
-                case 'child':
-                  reciprocalInheritedType = 'parent';
-                  break;
-                case 'sibling':
-                  reciprocalInheritedType = 'sibling';
-                  break;
-              }
+              const reciprocalInheritedType = reciprocalRelationFor[inheritedType as keyof typeof reciprocalRelationFor];
 
               await db
                 .insert(familyRelations)
@@ -1015,8 +997,8 @@ export function registerRoutes(app: Express): Server {
   // Create new family member endpoint
   app.post("/api/family/create-member", async (req, res) => {
     try {
-      const { username, password, displayName, email, birthday }= req.body;
-      const autoLogin = req.query.autoLogin !== 'false';
+      const { username, password, displayName, email, birthday } = req.body;
+            const autoLogin = req.query.autoLogin !== 'false';
 
       // Check if user already exists
       const [existingUser] = await db
@@ -1082,7 +1064,8 @@ export function registerRoutes(app: Express): Server {
   });
 
   app.delete("/api/family/:relationId", async (req, res) => {
-    if (!req.isAuthenticated()) {      return res.status(401).send("Not authenticated");
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
     }
 
     const { relationId } = req.params;
@@ -1105,7 +1088,8 @@ export function registerRoutes(app: Express): Server {
       }
 
       await db
-        .delete(familyRelations)        .where(eq(familyRelations.id, parseInt(relationId)));
+        .delete(familyRelations)
+        .where(eq(familyRelations.id, parseInt(relationId)));
 
       res.json({ message: "Relation deleted successfully" });
     } catch (error) {
