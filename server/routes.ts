@@ -870,16 +870,21 @@ export function registerRoutes(app: Express): Server {
     const fromUserId = req.user.id;
 
     // Validate relation type
-    const validRelationTypes = ['parent', 'child', 'sibling', 'spouse'];
+    const validRelationTypes = ['parent', 'child', 'sibling', 'spouse', 'grandparent', 'grandchild', 'aunt/uncle', 'niece/nephew', 'cousin'];
     if (!validRelationTypes.includes(relationType)) {
       return res.status(400).send("Invalid relation type");
     }
 
-    const reciprocalRelationFor = {
+    const relationTypeMap = {
       parent: 'child',
       child: 'parent',
+      spouse: 'spouse',
       sibling: 'sibling',
-      spouse: 'spouse'
+      grandparent: 'grandchild',
+      grandchild: 'grandparent',
+      'aunt/uncle': 'niece/nephew',
+      'niece/nephew': 'aunt/uncle',
+      cousin: 'cousin'
     } as const;
 
     try {
@@ -910,7 +915,7 @@ export function registerRoutes(app: Express): Server {
         .returning();
 
       // Create the reciprocal relation
-      const reciprocalType = reciprocalRelationFor[relationType as keyof typeof reciprocalRelationFor];
+      const reciprocalType = relationTypeMap[relationType as keyof typeof relationTypeMap];
 
       await db
         .insert(familyRelations)
@@ -973,7 +978,7 @@ export function registerRoutes(app: Express): Server {
                 });
 
               // Create reciprocal inherited relation
-              const reciprocalInheritedType = reciprocalRelationFor[inheritedType as keyof typeof reciprocalRelationFor];
+              const reciprocalInheritedType = relationTypeMap[inheritedType as keyof typeof relationTypeMap];
 
               await db
                 .insert(familyRelations)
@@ -998,7 +1003,7 @@ export function registerRoutes(app: Express): Server {
   app.post("/api/family/create-member", async (req, res) => {
     try {
       const { username, password, displayName, email, birthday } = req.body;
-            const autoLogin = req.query.autoLogin !== 'false';
+      const autoLogin = req.query.autoLogin !== 'false';
 
       // Check if user already exists
       const [existingUser] = await db
