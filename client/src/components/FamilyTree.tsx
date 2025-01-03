@@ -367,8 +367,8 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
     );
   }
 
-  const treeWidth = 1200;
-  const treeHeight = 800;
+  const treeWidth = 2400; // Increased from 1200 to accommodate more generations
+  const treeHeight = 1600; // Increased from 800 to accommodate more generations
   const nodeRadius = 40;
   const verticalSpacing = 150;
   const horizontalSpacing = 200;

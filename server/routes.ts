@@ -866,7 +866,8 @@ export function registerRoutes(app: Express): Server {
       return res.status(401).send("Not authenticated");
     }
 
-    const { fromUserId, toUserId, relationType } = req.body;
+    const { toUserId, relationType, inheritRelations } = req.body;
+    const fromUserId = req.user.id;
 
     // Validate relation type
     const validRelationTypes = ['parent', 'child', 'sibling', 'spouse'];
@@ -875,17 +876,33 @@ export function registerRoutes(app: Express): Server {
     }
 
     try {
+      // Check if relation already exists
+      const [existingRelation] = await db
+        .select()
+        .from(familyRelations)
+        .where(
+          and(
+            eq(familyRelations.fromUserId, fromUserId),
+            eq(familyRelations.toUserId, toUserId)
+          )
+        )
+        .limit(1);
+
+      if (existingRelation) {
+        return res.status(400).send("Relation already exists");
+      }
+
       // Create the family relation
       const [relation] = await db
         .insert(familyRelations)
         .values({
-          fromUserId: fromUserId,
-          toUserId: toUserId,
+          fromUserId,
+          toUserId,
           relationType,
         })
         .returning();
 
-      // If the relation is successful, create the reciprocal relation
+      // Create the reciprocal relation
       let reciprocalType;
       switch (relationType) {
         case 'parent':
@@ -902,15 +919,91 @@ export function registerRoutes(app: Express): Server {
           break;
       }
 
-      // Create reciprocal relation
       await db
         .insert(familyRelations)
         .values({
           fromUserId: toUserId,
           toUserId: fromUserId,
           relationType: reciprocalType,
-        })
-        .returning();
+        });
+
+      // If inheritRelations is true, create inherited relationships
+      if (inheritRelations) {
+        // Get all relations of the target user
+        const targetUserRelations = await db.query.familyRelations.findMany({
+          where: or(
+            eq(familyRelations.fromUserId, toUserId),
+            eq(familyRelations.toUserId, toUserId)
+          ),
+        });
+
+        for (const rel of targetUserRelations) {
+          const isFromTarget = rel.fromUserId === toUserId;
+          const otherUserId = isFromTarget ? rel.toUserId : rel.fromUserId;
+          const otherUserRelationType = isFromTarget ? rel.relationType : reciprocalType;
+
+          // Skip if trying to create relation with self
+          if (otherUserId === fromUserId) continue;
+
+          // Determine inherited relation type
+          let inheritedType;
+          if (relationType === 'parent') {
+            if (otherUserRelationType === 'parent') inheritedType = 'parent'; // grandparent
+            if (otherUserRelationType === 'sibling') inheritedType = 'parent'; // aunt/uncle
+            if (otherUserRelationType === 'child') inheritedType = 'sibling'; // cousin
+          } else if (relationType === 'child') {
+            if (otherUserRelationType === 'child') inheritedType = 'child'; // grandchild
+            if (otherUserRelationType === 'sibling') inheritedType = 'child'; // niece/nephew
+          }
+
+          if (inheritedType) {
+            // Check if inherited relation already exists
+            const [existingInherited] = await db
+              .select()
+              .from(familyRelations)
+              .where(
+                and(
+                  eq(familyRelations.fromUserId, fromUserId),
+                  eq(familyRelations.toUserId, otherUserId)
+                )
+              )
+              .limit(1);
+
+            if (!existingInherited) {
+              // Create inherited relation
+              await db
+                .insert(familyRelations)
+                .values({
+                  fromUserId,
+                  toUserId: otherUserId,
+                  relationType: inheritedType,
+                });
+
+              // Create reciprocal inherited relation
+              let reciprocalInheritedType;
+              switch (inheritedType) {
+                case 'parent':
+                  reciprocalInheritedType = 'child';
+                  break;
+                case 'child':
+                  reciprocalInheritedType = 'parent';
+                  break;
+                case 'sibling':
+                  reciprocalInheritedType = 'sibling';
+                  break;
+              }
+
+              await db
+                .insert(familyRelations)
+                .values({
+                  fromUserId: otherUserId,
+                  toUserId: fromUserId,
+                  relationType: reciprocalInheritedType,
+                });
+            }
+          }
+        }
+      }
 
       res.json(relation);
     } catch (error) {
@@ -922,7 +1015,7 @@ export function registerRoutes(app: Express): Server {
   // Create new family member endpoint
   app.post("/api/family/create-member", async (req, res) => {
     try {
-      const { username, password, displayName, email, birthday } = req.body;
+      const { username, password, displayName, email, birthday }= req.body;
       const autoLogin = req.query.autoLogin !== 'false';
 
       // Check if user already exists
