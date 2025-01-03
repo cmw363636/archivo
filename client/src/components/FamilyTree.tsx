@@ -93,7 +93,7 @@ const newUserSchema = z.object({
 
 type NewUserFormData = z.infer<typeof newUserSchema>;
 
-export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
+function FamilyTree({ onUserClick }: FamilyTreeProps) {
   const { user } = useUser();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -187,13 +187,14 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
 
   const addRelationMutation = useMutation({
     mutationFn: async (data: { toUserId: number; relationType: string }) => {
-      // When adding a parent to another user's profile, we're viewing their profile
+      // When adding a parent, toUserId is the parent's ID and targetUserId (if present) is the child's ID
       const response = await fetch("/api/family", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...data,
-          targetUserId: selectedMember?.id, // Include the current profile's user ID for parent relations
+          toUserId: data.toUserId, // this is the ID of the user we're adding as a relation
+          relationType: data.relationType,
+          targetUserId: selectedMember?.id, // if viewing someone else's profile, this is their ID
           inheritRelations: true
         }),
         credentials: "include",
@@ -393,7 +394,7 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
 
     // For parent relationships, check if there's a grandparent relationship
     if (relationType === 'parent') {
-      const hasGrandparentRelation = relations.some(r => 
+      const hasGrandparentRelation = relations.some(r =>
         (r.fromUserId === member.id && r.toUserId === user.id && r.relationType === 'grandparent') ||
         (r.toUserId === member.id && r.fromUserId === user.id && r.relationType === 'grandchild')
       );
@@ -1019,7 +1020,8 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
                   disabled={!selectedRelativeMemberId || !relationType}
                   onClick={handleAddRelation}
                 >
-                  Add Relation                </Button>
+                  Add Relation
+                </Button>
               </div>
             )}
           </div>
@@ -1028,3 +1030,5 @@ export default function FamilyTree({ onUserClick }: FamilyTreeProps) {
     </div>
   );
 }
+
+export default FamilyTree;
