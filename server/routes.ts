@@ -980,85 +980,40 @@ export function registerRoutes(app: Express): Server {
 
     const { relationId } = req.params;
 
-    const relationTypeMap = {
-      parent: 'child',
-      child: 'parent',
-      spouse: 'spouse',
-      sibling: 'sibling',
-      grandparent: 'grandchild',
-      grandchild: 'grandparent',
-      'aunt/uncle': 'niece/nephew',
-      'niece/nephew': 'aunt/uncle',
-      cousin: 'cousin'
-    } as const;
-
     try {
-      // Check if the relation exists
+      // Check if the relation exists and user is part of it
       const [relation] = await db
         .select()
         .from(familyRelations)
-        .where(eq(familyRelations.id, parseInt(relationId)))
-        .limit(1);
+        .where(eq(familyRelations.id, parseInt(relationId)));
 
       if (!relation) {
         return res.status(404).send("Relation not found");
       }
 
-      // Allow deletion if the user is part of the relationship
+      // User must be either fromUser or toUser to delete the relationship
       if (relation.fromUserId !== req.user.id && relation.toUserId !== req.user.id) {
         return res.status(403).send("Not authorized to delete this relation");
       }
 
-      // Find and delete the reciprocal relation
-      const reciprocalType = relationTypeMap[relation.relationType as keyof typeof relationTypeMap];
+      // Delete both the relation and its reciprocal relation
       await db
         .delete(familyRelations)
         .where(
-          and(
-            eq(familyRelations.fromUserId, relation.toUserId),
-            eq(familyRelations.toUserId, relation.fromUserId),
-            eq(familyRelations.relationType, reciprocalType)
+          or(
+            // Delete the original relation
+            eq(familyRelations.id, parseInt(relationId)),
+            // Delete the reciprocal relation
+            and(
+              eq(familyRelations.fromUserId, relation.toUserId),
+              eq(familyRelations.toUserId, relation.fromUserId)
+            )
           )
         );
 
-      // Delete inherited relationships if this is a parent-child relationship
-      if (relation.relationType === 'parent' || relation.relationType === 'child') {
-        const childId = relation.relationType === 'parent' ? relation.toUserId : relation.fromUserId;
-
-        // Delete all inherited relationships for the child
-        await db
-          .delete(familyRelations)
-          .where(
-            or(
-              and(              eq(familyRelations.toUserId, childId),
-                                or(
-                  eq(familyRelations.relationType, 'grandparent'),
-                  eq(familyRelations.relationType, 'aunt/uncle')
-                )
-              ),
-              and(
-                eq(familyRelations.fromUserId, childId),
-                or(
-                  eq(familyRelations.relationType, 'grandchild'),
-                  eq(familyRelations.relationType, 'niece/nephew')
-                )
-              )
-            )
-          );
-      }
-
-      // Delete the main relation
-      await db
-        .delete(familyRelations)
-        .where(eq(familyRelations.id, parseInt(relationId)));
-
       res.json({ message: "Relations deleted successfully" });
     } catch (error) {
-      console.error('Error deleting family relation:', {
-        error,
-        relationId,
-        userId: req.user.id
-      });
+      console.error('Error deleting family relation:', error);
       res.status(500).send("Error deleting family relation");
     }
   });
