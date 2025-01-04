@@ -981,7 +981,7 @@ export function registerRoutes(app: Express): Server {
     const { relationId } = req.params;
 
     try {
-      // Check if the relation exists and user is part of it
+      // Get the initial relation
       const [relation] = await db
         .select()
         .from(familyRelations)
@@ -991,33 +991,12 @@ export function registerRoutes(app: Express): Server {
         return res.status(404).send("Relation not found");
       }
 
-      // Check if the user is involved in this relationship (either direction)
-      const [userRelation] = await db
-        .select()
-        .from(familyRelations)
-        .where(
-          or(
-            // Original relationship
-            and(
-              eq(familyRelations.fromUserId, relation.fromUserId),
-              eq(familyRelations.toUserId, relation.toUserId)
-            ),
-            // Reciprocal relationship
-            and(
-              eq(familyRelations.fromUserId, relation.toUserId),
-              eq(familyRelations.toUserId, relation.fromUserId)
-            )
-          )
-        )
-        .filter(rel => 
-          rel.fromUserId === req.user.id || rel.toUserId === req.user.id
-        );
-
-      if (!userRelation) {
+      // Check if the user is involved in the relationship
+      if (relation.fromUserId !== req.user.id && relation.toUserId !== req.user.id) {
         return res.status(403).send("Not authorized to delete this relation");
       }
 
-      // Delete both the original and reciprocal relations where either user is involved
+      // Delete both directions of the relationship
       await db
         .delete(familyRelations)
         .where(
