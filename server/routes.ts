@@ -1044,6 +1044,55 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Add new profile picture upload endpoint
+  app.post("/api/users/profile-picture", upload.single('file'), async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    if (!req.file) {
+      return res.status(400).send("No file uploaded");
+    }
+
+    try {
+      // Get file info and update permissions
+      const url = `/uploads/${req.file.filename}`;
+      const stats = await fs.promises.stat(req.file.path);
+      console.log('File stats:', {
+        size: stats.size,
+        mode: stats.mode,
+        uid: stats.uid,
+        gid: stats.gid
+      });
+
+      await fs.promises.chmod(req.file.path, 0o644);
+
+      // Update user's profile picture URL in database
+      const [updatedUser] = await db
+        .update(users)
+        .set({
+          profilePicture: url,
+        })
+        .where(eq(users.id, req.user.id))
+        .returning();
+
+      // Remove previous profile picture if it exists
+      if (req.user.profilePicture && req.user.profilePicture.startsWith('/uploads/')) {
+        const oldFilePath = path.join(process.cwd(), req.user.profilePicture.slice(1));
+        try {
+          await fs.promises.unlink(oldFilePath);
+        } catch (error) {
+          console.error('Error deleting old profile picture:', error);
+        }
+      }
+
+      res.json(updatedUser);
+    } catch (error) {
+      console.error('Error uploading profile picture:', error);
+      res.status(500).send("Error uploading profile picture");
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

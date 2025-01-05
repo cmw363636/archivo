@@ -2,17 +2,19 @@ import { useState } from "react";
 import { UserProfileEditor } from "../components/UserProfileEditor";
 import { useUser } from "../hooks/use-user";
 import FamilyTree from "../components/FamilyTree";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AddFamilyMemberDialog } from "../components/AddFamilyMemberDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Link, useParams, useLocation } from "wouter";
-import { Menu, Link2, ArrowLeft, UserPlus2 } from "lucide-react";
+import { Menu, Link2, ArrowLeft, UserPlus2, Camera } from "lucide-react";
 import type { MediaItem } from "@db/schema";
 import { MediaDialog } from "../components/MediaDialog";
 import { MediaGallery } from "../components/MediaGallery";
 import AlbumManager from "../components/AlbumManager";
+import { useToast } from "@/hooks/use-toast";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 interface ProfileUser {
   id: number;
@@ -20,6 +22,7 @@ interface ProfileUser {
   displayName?: string;
   email?: string;
   dateOfBirth?: string;
+  profilePicture?: string;
 }
 
 export default function ProfilePage() {
@@ -28,6 +31,8 @@ export default function ProfilePage() {
   const [location, setLocation] = useLocation();
   const [selectedMedia, setSelectedMedia] = useState<MediaItem | null>(null);
   const [showAddRelationDialog, setShowAddRelationDialog] = useState(false);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const userId = params.id ? parseInt(params.id) : user?.id;
   const isOwnProfile = userId === user?.id;
@@ -39,6 +44,66 @@ export default function ProfilePage() {
 
   // Use profile user data if viewing someone else's profile, otherwise use logged-in user data
   const displayUser = isOwnProfile ? user : profileUser;
+
+  const uploadProfilePictureMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch("/api/users/profile-picture", {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users", userId] });
+      toast({
+        title: "Success",
+        description: "Profile picture updated successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update profile picture",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleProfilePictureUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Check file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "Error",
+        description: "Profile picture must be less than 5MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check file type
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Error",
+        description: "Only image files are allowed",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    uploadProfilePictureMutation.mutate(file);
+  };
 
   const { data: taggedMedia = [] } = useQuery<MediaItem[]>({
     queryKey: ["/api/media/tagged", userId],
@@ -77,213 +142,6 @@ export default function ProfilePage() {
       age--;
     }
     return age;
-  };
-
-  const renderContent = () => {
-    if (location === "/") {
-      return <MediaGallery />;
-    }
-    if (location === "/albums") {
-      return <AlbumManager />;
-    }
-    if (location === "/family") {
-      return (
-        <FamilyTree
-          onUserClick={(userId) => {
-            setLocation(`/profile/${userId}`);
-          }}
-        />
-      );
-    }
-
-    return (
-      <div className="space-y-8">
-        {!isOwnProfile && (
-          <Button
-            variant="ghost"
-            className="flex items-center gap-2 text-[#7c6f9f] hover:text-[#7c6f9f]/80 -ml-2"
-            onClick={() => setLocation("/family")}
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Family Tree
-          </Button>
-        )}
-        <div className="grid gap-8 md:grid-cols-2">
-          {/* Profile Card */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Profile</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div>
-                  <h3 className="text-lg font-medium">Display Name</h3>
-                  <p className="text-muted-foreground">
-                    {displayUser?.displayName || displayUser?.username}
-                  </p>
-                </div>
-                <div>
-                  <h3 className="text-lg font-medium">Username</h3>
-                  <p className="text-muted-foreground">{displayUser?.username}</p>
-                </div>
-                {displayUser?.email && (
-                  <div>
-                    <h3 className="text-lg font-medium">Email</h3>
-                    <p className="text-muted-foreground">{displayUser.email}</p>
-                  </div>
-                )}
-                {displayUser?.dateOfBirth && (
-                  <div>
-                    <h3 className="text-lg font-medium">Age</h3>
-                    <p className="text-muted-foreground">
-                      {calculateAge(displayUser.dateOfBirth)} years old
-                    </p>
-                  </div>
-                )}
-                {isOwnProfile && (
-                  <UserProfileEditor />
-                )}
-                {!isOwnProfile && (
-                  <div className="pt-4">
-                    <Button
-                      onClick={handleAddRelation}
-                      className="w-full flex items-center gap-2"
-                    >
-                      <UserPlus2 className="h-4 w-4" />
-                      Add Relation
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Uploaded Media Card */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Uploaded Media</CardTitle>
-              {uploadedMedia.length > 5 && (
-                <Link href={`/profile/${userId}/uploaded`}>
-                  <Button variant="ghost">
-                    See All
-                  </Button>
-                </Link>
-              )}
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {uploadedMedia.slice(0, 5).length > 0 ? (
-                  uploadedMedia.slice(0, 5).map((media) => (
-                    <div
-                      key={media.id}
-                      className="flex items-center gap-4 p-2 rounded-lg hover:bg-accent cursor-pointer"
-                      onClick={() => setSelectedMedia(media)}
-                    >
-                      {media.type === 'photo' && media.url && (
-                        <img
-                          src={media.url}
-                          alt={media.title || ''}
-                          className="w-16 h-16 object-cover rounded-md"
-                        />
-                      )}
-                      {media.type === 'post' && !media.url && (
-                        <div className="w-16 h-16 bg-muted flex items-center justify-center rounded-md">
-                          <span className="text-xs text-muted-foreground">Post</span>
-                        </div>
-                      )}
-                      <div className="flex-1">
-                        <h4 className="font-medium">{media.title}</h4>
-                        <p className="text-sm text-muted-foreground">
-                          {media.description}
-                        </p>
-                        {media.type === 'post' && media.website_url && (
-                          <div className="mt-1 flex items-center gap-1 text-sm text-primary">
-                            <Link2 className="h-3 w-3" />
-                            <span>{media.website_url}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-muted-foreground">No uploaded media</p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Tagged Media Card */}
-          <Card className="md:col-span-2">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Tagged Media</CardTitle>
-              {taggedMedia.length > 5 && (
-                <Link href={`/profile/${userId}/tagged`}>
-                  <Button variant="ghost">
-                    See All
-                  </Button>
-                </Link>
-              )}
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {taggedMedia.slice(0, 5).length > 0 ? (
-                  taggedMedia.slice(0, 5).map((media) => (
-                    <div
-                      key={media.id}
-                      className="flex items-center gap-4 p-2 rounded-lg hover:bg-accent cursor-pointer"
-                      onClick={() => setSelectedMedia(media)}
-                    >
-                      {media.type === 'photo' && media.url && (
-                        <img
-                          src={media.url}
-                          alt={media.title || ''}
-                          className="w-16 h-16 object-cover rounded-md"
-                        />
-                      )}
-                      <div className="flex-1">
-                        <h4 className="font-medium">{media.title}</h4>
-                        <p className="text-sm text-muted-foreground">
-                          {media.description}
-                        </p>
-                        {media.type === 'post' && media.website_url && (
-                          <div className="mt-1 flex items-center gap-1 text-sm text-primary">
-                            <Link2 className="h-3 w-3" />
-                            <span>{media.website_url}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-muted-foreground">No tagged media</p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Family Tree Section */}
-        <Card className="mt-8">
-          <CardHeader>
-            <CardTitle>
-              {isOwnProfile 
-                ? "Your Family Tree" 
-                : `${displayUser?.displayName || displayUser?.username}'s Family Tree`}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <FamilyTree
-                onUserClick={(clickedUserId) => {
-                  setLocation(`/profile/${clickedUserId}`);
-                }}
-                rootUserId={userId}
-              />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
   };
 
   return (
@@ -372,7 +230,220 @@ export default function ProfilePage() {
       </header>
 
       <main className="container mx-auto px-4 py-8">
-        {renderContent()}
+        <div className="space-y-8">
+          {!isOwnProfile && (
+            <Button
+              variant="ghost"
+              className="flex items-center gap-2 text-[#7c6f9f] hover:text-[#7c6f9f]/80 -ml-2"
+              onClick={() => setLocation("/family")}
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back to Family Tree
+            </Button>
+          )}
+          <div className="grid gap-8 md:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>Profile</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  <div className="flex flex-col items-center space-y-4">
+                    <Avatar className="h-32 w-32">
+                      {displayUser?.profilePicture ? (
+                        <AvatarImage src={displayUser.profilePicture} alt={displayUser.displayName || displayUser.username} />
+                      ) : (
+                        <AvatarFallback className="text-2xl">
+                          {(displayUser?.displayName || displayUser?.username || '?').charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      )}
+                    </Avatar>
+                    {isOwnProfile && (
+                      <div className="flex items-center">
+                        <input
+                          type="file"
+                          id="profile-picture"
+                          className="hidden"
+                          accept="image/*"
+                          onChange={handleProfilePictureUpload}
+                        />
+                        <label
+                          htmlFor="profile-picture"
+                          className="flex items-center gap-2 cursor-pointer text-sm text-primary hover:text-primary/80"
+                        >
+                          <Camera className="h-4 w-4" />
+                          {displayUser.profilePicture ? 'Change Picture' : 'Add Picture'}
+                        </label>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="text-lg font-medium">Display Name</h3>
+                      <p className="text-muted-foreground">
+                        {displayUser?.displayName || displayUser?.username}
+                      </p>
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-medium">Username</h3>
+                      <p className="text-muted-foreground">{displayUser?.username}</p>
+                    </div>
+                    {displayUser?.email && (
+                      <div>
+                        <h3 className="text-lg font-medium">Email</h3>
+                        <p className="text-muted-foreground">{displayUser.email}</p>
+                      </div>
+                    )}
+                    {displayUser?.dateOfBirth && (
+                      <div>
+                        <h3 className="text-lg font-medium">Age</h3>
+                        <p className="text-muted-foreground">
+                          {calculateAge(displayUser.dateOfBirth)} years old
+                        </p>
+                      </div>
+                    )}
+                    {isOwnProfile && (
+                      <UserProfileEditor />
+                    )}
+                    {!isOwnProfile && (
+                      <div className="pt-4">
+                        <Button
+                          onClick={handleAddRelation}
+                          className="w-full flex items-center gap-2"
+                        >
+                          <UserPlus2 className="h-4 w-4" />
+                          Add Relation
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>Uploaded Media</CardTitle>
+                {uploadedMedia.length > 5 && (
+                  <Link href={`/profile/${userId}/uploaded`}>
+                    <Button variant="ghost">
+                      See All
+                    </Button>
+                  </Link>
+                )}
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {uploadedMedia.slice(0, 5).length > 0 ? (
+                    uploadedMedia.slice(0, 5).map((media) => (
+                      <div
+                        key={media.id}
+                        className="flex items-center gap-4 p-2 rounded-lg hover:bg-accent cursor-pointer"
+                        onClick={() => setSelectedMedia(media)}
+                      >
+                        {media.type === 'photo' && media.url && (
+                          <img
+                            src={media.url}
+                            alt={media.title || ''}
+                            className="w-16 h-16 object-cover rounded-md"
+                          />
+                        )}
+                        {media.type === 'post' && !media.url && (
+                          <div className="w-16 h-16 bg-muted flex items-center justify-center rounded-md">
+                            <span className="text-xs text-muted-foreground">Post</span>
+                          </div>
+                        )}
+                        <div className="flex-1">
+                          <h4 className="font-medium">{media.title}</h4>
+                          <p className="text-sm text-muted-foreground">
+                            {media.description}
+                          </p>
+                          {media.type === 'post' && media.website_url && (
+                            <div className="mt-1 flex items-center gap-1 text-sm text-primary">
+                              <Link2 className="h-3 w-3" />
+                              <span>{media.website_url}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-muted-foreground">No uploaded media</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="md:col-span-2">
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>Tagged Media</CardTitle>
+                {taggedMedia.length > 5 && (
+                  <Link href={`/profile/${userId}/tagged`}>
+                    <Button variant="ghost">
+                      See All
+                    </Button>
+                  </Link>
+                )}
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {taggedMedia.slice(0, 5).length > 0 ? (
+                    taggedMedia.slice(0, 5).map((media) => (
+                      <div
+                        key={media.id}
+                        className="flex items-center gap-4 p-2 rounded-lg hover:bg-accent cursor-pointer"
+                        onClick={() => setSelectedMedia(media)}
+                      >
+                        {media.type === 'photo' && media.url && (
+                          <img
+                            src={media.url}
+                            alt={media.title || ''}
+                            className="w-16 h-16 object-cover rounded-md"
+                          />
+                        )}
+                        <div className="flex-1">
+                          <h4 className="font-medium">{media.title}</h4>
+                          <p className="text-sm text-muted-foreground">
+                            {media.description}
+                          </p>
+                          {media.type === 'post' && media.website_url && (
+                            <div className="mt-1 flex items-center gap-1 text-sm text-primary">
+                              <Link2 className="h-3 w-3" />
+                              <span>{media.website_url}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-muted-foreground">No tagged media</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card className="mt-8">
+            <CardHeader>
+              <CardTitle>
+                {isOwnProfile
+                  ? "Your Family Tree"
+                  : `${displayUser?.displayName || displayUser?.username}'s Family Tree`}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <FamilyTree
+                  onUserClick={(clickedUserId) => {
+                    setLocation(`/profile/${clickedUserId}`);
+                  }}
+                  rootUserId={userId}
+                />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </main>
 
       {showAddRelationDialog && (

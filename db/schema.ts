@@ -8,9 +8,10 @@ export const users = pgTable("users", {
   username: text("username").unique().notNull(),
   password: text("password").notNull(),
   displayName: text("display_name").notNull(),
-  email: text("email"),  // New optional email field
+  email: text("email"),  // Optional email field
   dateOfBirth: timestamp("date_of_birth"),
   bio: text("bio"),
+  profilePicture: text("profile_picture"), // New field for profile picture URL
 });
 
 export const familyRelations = pgTable("family_relations", {
@@ -47,7 +48,7 @@ export const mediaItems = pgTable("media_items", {
   website_url: text("website_url"), // For post type
   content: text("content"), // For post type
   metadata: jsonb("metadata"),
-  mediaDate: timestamp("media_date").defaultNow().notNull(), // New field for media date
+  mediaDate: timestamp("media_date").defaultNow().notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -125,10 +126,12 @@ export const familyRelationsRelations = relations(familyRelations, ({ one }) => 
 export const insertUserSchema = createInsertSchema(users, {
   dateOfBirth: z.string().optional().nullable(),
   email: z.string().email("Invalid email format").optional(),
+  profilePicture: z.string().optional(), // Add profile picture to schema
 });
 export const selectUserSchema = createSelectSchema(users, {
   dateOfBirth: z.string().optional().nullable(),
   email: z.string().email("Invalid email format").optional(),
+  profilePicture: z.string().optional(), // Add profile picture to schema
 });
 
 // Types
