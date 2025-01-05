@@ -1,47 +1,28 @@
 import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useUser } from "../hooks/use-user";
 import { useToast } from "@/hooks/use-toast";
-import { Trash2, Calendar as CalendarIcon } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { format } from "date-fns";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+
+// Layout constants for SVG rendering
+const SVG_WIDTH = 2400;
+const SVG_HEIGHT = 1600;
+const CENTER_X = SVG_WIDTH / 2;
+const CENTER_Y = SVG_HEIGHT / 2;
 
 type FamilyMember = {
   id: number;
@@ -341,304 +322,6 @@ function FamilyTree({ onUserClick, rootUserId }: FamilyTreeProps) {
     return undefined;
   };
 
-  const renderTreeSvg = () => {
-    const centerX = 2400 / 2;
-    const centerY = 1600 / 2;
-    const memberNodes: JSX.Element[] = [];
-    const relationLines: JSX.Element[] = [];
-
-    // Render parents and their parents (grandparents)
-    if (familyGroups.parent) {
-      const parentWidth = 200 * (familyGroups.parent.length - 1);
-      familyGroups.parent.forEach((parent, i) => {
-        const parentOfParent = getParentOfParent(parent.id);
-        const x = centerX - parentWidth / 2 + i * 200;
-        const y = centerY - 150;
-
-        // Render parent's parent (grandparent) if exists
-        if (parentOfParent) {
-          const grandparentY = y - 150;
-          memberNodes.push(
-            <g
-              key={parentOfParent.id}
-              transform={`translate(${x},${grandparentY})`}
-              onClick={(e) => handleNodeClick(e, parentOfParent.id)}
-              style={{ cursor: 'pointer' }}
-            >
-              <circle
-                r={40}
-                fill="hsl(var(--secondary))"
-                className="stroke-2 stroke-white"
-              />
-              <text
-                textAnchor="middle"
-                dy=".3em"
-                fill="hsl(var(--secondary-foreground))"
-                className="text-sm font-medium"
-                pointerEvents="none"
-              >
-                {parentOfParent.displayName || parentOfParent.username}
-              </text>
-            </g>
-          );
-
-          // Draw line from grandparent to parent
-          relationLines.push(
-            <line
-              key={`line-grandparent-${parentOfParent.id}-${parent.id}`}
-              x1={x}
-              y1={grandparentY + 40}
-              x2={x}
-              y2={y - 40}
-              stroke="hsl(var(--border))"
-              strokeWidth="2"
-              pointerEvents="none"
-            />
-          );
-        }
-
-        // Render parent
-        memberNodes.push(
-          <g
-            key={parent.id}
-            transform={`translate(${x},${y})`}
-            onClick={(e) => handleNodeClick(e, parent.id)}
-            style={{ cursor: 'pointer' }}
-          >
-            <circle
-              r={40}
-              fill="hsl(var(--secondary))"
-              className="stroke-2 stroke-white"
-            />
-            <text
-              textAnchor="middle"
-              dy=".3em"
-              fill="hsl(var(--secondary-foreground))"
-              className="text-sm font-medium"
-              pointerEvents="none"
-            >
-              {parent.displayName || parent.username}
-            </text>
-          </g>
-        );
-
-        // Draw line from parent to user
-        relationLines.push(
-          <line
-            key={`line-parent-${parent.id}`}
-            x1={x}
-            y1={y + 40}
-            x2={centerX}
-            y2={centerY - 40}
-            stroke="hsl(var(--border))"
-            strokeWidth="2"
-            pointerEvents="none"
-          />
-        );
-      });
-    }
-
-    // Render children
-    if (familyGroups.child) {
-      const childWidth = 200 * (familyGroups.child.length - 1);
-      familyGroups.child.forEach((child, i) => {
-        const x = centerX - childWidth / 2 + i * 200;
-        const y = centerY + 150;
-
-        memberNodes.push(
-          <g
-            key={child.id}
-            transform={`translate(${x},${y})`}
-            onClick={(e) => handleNodeClick(e, child.id)}
-            style={{ cursor: 'pointer' }}
-          >
-            <circle
-              r={40}
-              fill="hsl(var(--secondary))"
-              className="stroke-2 stroke-white"
-            />
-            <text
-              textAnchor="middle"
-              dy=".3em"
-              fill="hsl(var(--secondary-foreground))"
-              className="text-sm font-medium"
-              pointerEvents="none"
-            >
-              {child.displayName || child.username}
-            </text>
-          </g>
-        );
-
-        relationLines.push(
-          <line
-            key={`line-child-${child.id}`}
-            x1={centerX}
-            y1={centerY + 40}
-            x2={x}
-            y2={y - 40}
-            stroke="hsl(var(--border))"
-            strokeWidth="2"
-            pointerEvents="none"
-          />
-        );
-      });
-    }
-
-    // Render spouse
-    if (familyGroups.spouse) {
-      familyGroups.spouse.forEach((spouse, i) => {
-        const x = centerX - 200;
-        const y = centerY;
-
-        memberNodes.push(
-          <g
-            key={spouse.id}
-            transform={`translate(${x},${y})`}
-            onClick={(e) => handleNodeClick(e, spouse.id)}
-            style={{ cursor: 'pointer' }}
-          >
-            <circle
-              r={40}
-              fill="hsl(var(--secondary))"
-              className="stroke-2 stroke-white"
-            />
-            <text
-              textAnchor="middle"
-              dy=".3em"
-              fill="hsl(var(--secondary-foreground))"
-              className="text-sm font-medium"
-              pointerEvents="none"
-            >
-              {spouse.displayName || spouse.username}
-            </text>
-          </g>
-        );
-
-        relationLines.push(
-          <g key={`line-spouse-${spouse.id}`}>
-            <line
-              x1={x + 40}
-              y1={y}
-              x2={centerX - 40}
-              y2={centerY}
-              stroke="hsl(var(--border))"
-              strokeWidth="2"
-              pointerEvents="none"
-            />
-            <text
-              x={(x + centerX) / 2}
-              y={y - 10}
-              textAnchor="middle"
-              fill="hsl(var(--muted-foreground))"
-              className="text-xs"
-              pointerEvents="none"
-            >
-              Spouse
-            </text>
-          </g>
-        );
-      });
-    }
-
-    // Render siblings
-    if (familyGroups.sibling) {
-      const siblingStartX = centerX + 200;
-
-      familyGroups.sibling.forEach((sibling, i) => {
-        const x = siblingStartX + (i * 200);
-        const y = centerY;
-
-        memberNodes.push(
-          <g
-            key={sibling.id}
-            transform={`translate(${x},${y})`}
-            onClick={(e) => handleNodeClick(e, sibling.id)}
-            style={{ cursor: 'pointer' }}
-          >
-            <circle
-              r={40}
-              fill="hsl(var(--secondary))"
-              className="stroke-2 stroke-white"
-            />
-            <text
-              textAnchor="middle"
-              dy=".3em"
-              fill="hsl(var(--secondary-foreground))"
-              className="text-sm font-medium"
-              pointerEvents="none"
-            >
-              {sibling.displayName || sibling.username}
-            </text>
-          </g>
-        );
-
-        relationLines.push(
-          <g key={`line-sibling-${sibling.id}`}>
-            <line
-              x1={i === 0 ? centerX + 40 : siblingStartX + ((i - 1) * 200) + 40}
-              y1={centerY}
-              x2={x - 40}
-              y2={y}
-              stroke="hsl(var(--border))"
-              strokeWidth="2"
-              pointerEvents="none"
-            />
-            <text
-              x={(x + (i === 0 ? centerX : siblingStartX + ((i - 1) * 200))) / 2}
-              y={y - 10}
-              textAnchor="middle"
-              fill="hsl(var(--muted-foreground))"
-              className="text-xs"
-              pointerEvents="none"
-            >
-              Sibling
-            </text>
-          </g>
-        );
-      });
-    }
-
-    return (
-      <svg
-        width={2400}
-        height={1600}
-        className="max-w-full cursor-move"
-        ref={svgRef}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseLeave}
-      >
-        <g transform={`translate(${position.x},${position.y})`}>
-          {relationLines}
-          {memberNodes}
-          {/* Center user node */}
-          <g
-            key={displayUser?.id}
-            transform={`translate(${centerX},${centerY})`}
-            onClick={(e) => handleNodeClick(e, displayUser?.id)}
-            style={{ cursor: 'pointer' }}
-          >
-            <circle
-              r={40}
-              fill="hsl(var(--primary))"
-              className="stroke-2 stroke-white"
-            />
-            <text
-              textAnchor="middle"
-              dy=".3em"
-              fill="white"
-              className="text-sm font-medium"
-              pointerEvents="none"
-            >
-              {displayUser?.displayName || displayUser?.username}
-            </text>
-          </g>
-        </g>
-      </svg>
-    );
-  };
-
   const handleMouseDown = (event: React.MouseEvent) => {
     if (event.button !== 0) return;
     setIsDragging(true);
@@ -707,8 +390,8 @@ function FamilyTree({ onUserClick, rootUserId }: FamilyTreeProps) {
           <div className="relative w-full overflow-hidden border rounded-lg">
             {/* SVG Family Tree */}
             <svg
-              width={2400}
-              height={1600}
+              width={SVG_WIDTH}
+              height={SVG_HEIGHT}
               className="max-w-full cursor-move"
               ref={svgRef}
               onMouseDown={handleMouseDown}
@@ -718,54 +401,50 @@ function FamilyTree({ onUserClick, rootUserId }: FamilyTreeProps) {
             >
               <g transform={`translate(${position.x},${position.y})`}>
                 {/* Render parents and their parents (grandparents) */}
-                {familyGroups.parent && familyGroups.parent.map((parent, i) => {
+                {familyGroups.parent?.map((parent, i) => {
                   const parentOfParent = getParentOfParent(parent.id);
-                  const x = centerX - (familyGroups.parent.length -1) * 100 + i * 200;
-                  const y = centerY - 150;
+                  const x = CENTER_X - (familyGroups.parent.length - 1) * 100 + i * 200;
+                  const y = CENTER_Y - 150;
 
-                  // Render parent's parent (grandparent) if exists
-                  if (parentOfParent) {
-                    const grandparentY = y - 150;
-                    return (
-                      <>
-                        <g
-                          key={parentOfParent.id}
-                          transform={`translate(${x},${grandparentY})`}
-                          onClick={(e) => handleNodeClick(e, parentOfParent.id)}
-                          style={{ cursor: 'pointer' }}
-                        >
-                          <circle
-                            r={40}
-                            fill="hsl(var(--secondary))"
-                            className="stroke-2 stroke-white"
-                          />
-                          <text
-                            textAnchor="middle"
-                            dy=".3em"
-                            fill="hsl(var(--secondary-foreground))"
-                            className="text-sm font-medium"
-                            pointerEvents="none"
-                          >
-                            {parentOfParent.displayName || parentOfParent.username}
-                          </text>
-                        </g>
-                        <line
-                          key={`line-grandparent-${parentOfParent.id}-${parent.id}`}
-                          x1={x}
-                          y1={grandparentY + 40}
-                          x2={x}
-                          y2={y - 40}
-                          stroke="hsl(var(--border))"
-                          strokeWidth="2"
-                          pointerEvents="none"
-                        />
-                      </>
-                    )
-                  }
                   return (
-                    <>
+                    <g key={`parent-group-${parent.id}`}>
+                      {/* Render grandparent if exists */}
+                      {parentOfParent && (
+                        <g key={`grandparent-group-${parentOfParent.id}`}>
+                          <g
+                            transform={`translate(${x},${y - 150})`}
+                            onClick={(e) => handleNodeClick(e, parentOfParent.id)}
+                            style={{ cursor: 'pointer' }}
+                          >
+                            <circle
+                              r={40}
+                              fill="hsl(var(--secondary))"
+                              className="stroke-2 stroke-white"
+                            />
+                            <text
+                              textAnchor="middle"
+                              dy=".3em"
+                              fill="hsl(var(--secondary-foreground))"
+                              className="text-sm font-medium"
+                              pointerEvents="none"
+                            >
+                              {parentOfParent.displayName || parentOfParent.username}
+                            </text>
+                          </g>
+                          <line
+                            x1={x}
+                            y1={y - 110}
+                            x2={x}
+                            y2={y - 40}
+                            stroke="hsl(var(--border))"
+                            strokeWidth="2"
+                            pointerEvents="none"
+                          />
+                        </g>
+                      )}
+
+                      {/* Render parent */}
                       <g
-                        key={parent.id}
                         transform={`translate(${x},${y})`}
                         onClick={(e) => handleNodeClick(e, parent.id)}
                         style={{ cursor: 'pointer' }}
@@ -786,26 +465,26 @@ function FamilyTree({ onUserClick, rootUserId }: FamilyTreeProps) {
                         </text>
                       </g>
                       <line
-                        key={`line-parent-${parent.id}`}
                         x1={x}
                         y1={y + 40}
-                        x2={centerX}
-                        y2={centerY - 40}
+                        x2={CENTER_X}
+                        y2={CENTER_Y - 40}
                         stroke="hsl(var(--border))"
                         strokeWidth="2"
                         pointerEvents="none"
                       />
-                    </>
-                  )
+                    </g>
+                  );
                 })}
+
                 {/* Render children */}
-                {familyGroups.child && familyGroups.child.map((child, i) => {
-                  const x = centerX - (familyGroups.child.length - 1) * 100 + i * 200;
-                  const y = centerY + 150;
+                {familyGroups.child?.map((child, i) => {
+                  const x = CENTER_X - (familyGroups.child.length - 1) * 100 + i * 200;
+                  const y = CENTER_Y + 150;
+
                   return (
-                    <>
+                    <g key={`child-group-${child.id}`}>
                       <g
-                        key={child.id}
                         transform={`translate(${x},${y})`}
                         onClick={(e) => handleNodeClick(e, child.id)}
                         style={{ cursor: 'pointer' }}
@@ -826,26 +505,26 @@ function FamilyTree({ onUserClick, rootUserId }: FamilyTreeProps) {
                         </text>
                       </g>
                       <line
-                        key={`line-child-${child.id}`}
-                        x1={centerX}
-                        y1={centerY + 40}
+                        x1={CENTER_X}
+                        y1={CENTER_Y + 40}
                         x2={x}
                         y2={y - 40}
                         stroke="hsl(var(--border))"
                         strokeWidth="2"
                         pointerEvents="none"
                       />
-                    </>
-                  )
+                    </g>
+                  );
                 })}
+
                 {/* Render spouse */}
-                {familyGroups.spouse && familyGroups.spouse.map((spouse, i) => {
-                  const x = centerX - 200;
-                  const y = centerY;
+                {familyGroups.spouse?.map((spouse, i) => {
+                  const x = CENTER_X - 200;
+                  const y = CENTER_Y;
+
                   return (
-                    <>
+                    <g key={`spouse-group-${spouse.id}`}>
                       <g
-                        key={spouse.id}
                         transform={`translate(${x},${y})`}
                         onClick={(e) => handleNodeClick(e, spouse.id)}
                         style={{ cursor: 'pointer' }}
@@ -865,39 +544,38 @@ function FamilyTree({ onUserClick, rootUserId }: FamilyTreeProps) {
                           {spouse.displayName || spouse.username}
                         </text>
                       </g>
-                      <g key={`line-spouse-${spouse.id}`}>
-                        <line
-                          x1={x + 40}
-                          y1={y}
-                          x2={centerX - 40}
-                          y2={centerY}
-                          stroke="hsl(var(--border))"
-                          strokeWidth="2"
-                          pointerEvents="none"
-                        />
-                        <text
-                          x={(x + centerX) / 2}
-                          y={y - 10}
-                          textAnchor="middle"
-                          fill="hsl(var(--muted-foreground))"
-                          className="text-xs"
-                          pointerEvents="none"
-                        >
-                          Spouse
-                        </text>
-                      </g>
-                    </>
-                  )
+                      <line
+                        x1={x + 40}
+                        y1={y}
+                        x2={CENTER_X - 40}
+                        y2={CENTER_Y}
+                        stroke="hsl(var(--border))"
+                        strokeWidth="2"
+                        pointerEvents="none"
+                      />
+                      <text
+                        x={(x + CENTER_X) / 2}
+                        y={y - 10}
+                        textAnchor="middle"
+                        fill="hsl(var(--muted-foreground))"
+                        className="text-xs"
+                        pointerEvents="none"
+                      >
+                        Spouse
+                      </text>
+                    </g>
+                  );
                 })}
+
                 {/* Render siblings */}
-                {familyGroups.sibling && familyGroups.sibling.map((sibling, i) => {
-                  const siblingStartX = centerX + 200;
+                {familyGroups.sibling?.map((sibling, i) => {
+                  const siblingStartX = CENTER_X + 200;
                   const x = siblingStartX + (i * 200);
-                  const y = centerY;
+                  const y = CENTER_Y;
+
                   return (
-                    <>
+                    <g key={`sibling-group-${sibling.id}`}>
                       <g
-                        key={sibling.id}
                         transform={`translate(${x},${y})`}
                         onClick={(e) => handleNodeClick(e, sibling.id)}
                         style={{ cursor: 'pointer' }}
@@ -917,34 +595,33 @@ function FamilyTree({ onUserClick, rootUserId }: FamilyTreeProps) {
                           {sibling.displayName || sibling.username}
                         </text>
                       </g>
-                      <g key={`line-sibling-${sibling.id}`}>
-                        <line
-                          x1={i === 0 ? centerX + 40 : siblingStartX + ((i - 1) * 200) + 40}
-                          y1={centerY}
-                          x2={x - 40}
-                          y2={y}
-                          stroke="hsl(var(--border))"
-                          strokeWidth="2"
-                          pointerEvents="none"
-                        />
-                        <text
-                          x={(x + (i === 0 ? centerX : siblingStartX + ((i - 1) * 200))) / 2}
-                          y={y - 10}
-                          textAnchor="middle"
-                          fill="hsl(var(--muted-foreground))"
-                          className="text-xs"
-                          pointerEvents="none"
-                        >
-                          Sibling
-                        </text>
-                      </g>
-                    </>
-                  )
+                      <line
+                        x1={i === 0 ? CENTER_X + 40 : siblingStartX + ((i - 1) * 200) + 40}
+                        y1={CENTER_Y}
+                        x2={x - 40}
+                        y2={y}
+                        stroke="hsl(var(--border))"
+                        strokeWidth="2"
+                        pointerEvents="none"
+                      />
+                      <text
+                        x={(x + (i === 0 ? CENTER_X : siblingStartX + ((i - 1) * 200))) / 2}
+                        y={y - 10}
+                        textAnchor="middle"
+                        fill="hsl(var(--muted-foreground))"
+                        className="text-xs"
+                        pointerEvents="none"
+                      >
+                        Sibling
+                      </text>
+                    </g>
+                  );
                 })}
+
                 {/* Center user node */}
                 <g
-                  key={displayUser?.id}
-                  transform={`translate(${centerX},${centerY})`}
+                  key={`center-user-${displayUser?.id}`}
+                  transform={`translate(${CENTER_X},${CENTER_Y})`}
                   onClick={(e) => handleNodeClick(e, displayUser?.id)}
                   style={{ cursor: 'pointer' }}
                 >
@@ -967,251 +644,171 @@ function FamilyTree({ onUserClick, rootUserId }: FamilyTreeProps) {
             </svg>
           </div>
 
-          {isOwnTree && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Your Family Relationships</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-2">
-                  {relations.map((relation) => {
-                    const isFromUser = relation.fromUserId === currentUserId;
-                    const relatedUser = isFromUser ? relation.toUser : relation.fromUser;
-                    const displayType = isFromUser
-                      ? relation.relationType
-                      : relationTypeMap[relation.relationType];
+          {/* Add Relation Dialog */}
+          {isOwnTree && isAddingRelation && (
+            <Dialog open={isAddingRelation} onOpenChange={setIsAddingRelation}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Add Family Relation</DialogTitle>
+                </DialogHeader>
 
-                    return (
-                      <li key={relation.id} className="flex items-center justify-between">
-                        <span className="text-sm">
-                          <Link href={`/profile/${relatedUser.id}`} className="font-medium hover:underline">
-                            {relatedUser.displayName || relatedUser.username}
-                          </Link>
-                          {' is your '}
-                          <span className="font-medium">{displayType}</span>
-                        </span>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteRelation(relation.id)}
-                          className="h-8 w-8 p-0"
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </CardContent>
-            </Card>
-          )}
-        </CardContent>
-      </Card>
+                {isCreatingUser ? (
+                  <Form {...form}>
+                    <form onSubmit={form.handleSubmit(handleAddRelation)} className="space-y-4">
+                      <FormField
+                        control={form.control}
+                        name="username"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Username</FormLabel>
+                            <FormControl>
+                              <Input {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
 
-      {/* Add Relation Dialog */}
-      {isOwnTree && (
-        <Dialog
-          open={isAddingRelation}
-          onOpenChange={(open) => {
-            setIsAddingRelation(open);
-            if (!open) {
-              setSelectedRelativeMemberId("");
-              setRelationType("");
-              setIsCreatingUser(false);
-              form.reset();
-            }
-          }}
-        >
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>Add Family Relation</DialogTitle>
-              <DialogDescription>
-                Select an existing family member or create a new one
-              </DialogDescription>
-            </DialogHeader>
+                      <FormField
+                        control={form.control}
+                        name="displayName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Display Name</FormLabel>
+                            <FormControl>
+                              <Input {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
 
-            <div className="grid gap-4 py-4">
-              <div className="flex items-center gap-4">
-                <Button
-                  type="button"
-                  variant={!isCreatingUser ? "default" : "outline"}
-                  onClick={() => setIsCreatingUser(false)}
-                  className="flex-1"
-                >
-                  Existing Member
-                </Button>
-                <Button
-                  type="button"
-                  variant={isCreatingUser ? "default" : "outline"}
-                  onClick={() => setIsCreatingUser(true)}
-                  className="flex-1"
-                >
-                  New Member
-                </Button>
-              </div>
+                      <FormField
+                        control={form.control}
+                        name="email"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Email (Optional)</FormLabel>
+                            <FormControl>
+                              <Input {...field} type="email" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
 
-              {isCreatingUser ? (
-                <Form {...form}>
-                  <form onSubmit={form.handleSubmit(handleAddRelation)} className="space-y-4">
-                    <FormField
-                      control={form.control}
-                      name="username"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Username</FormLabel>
-                          <FormControl>
-                            <Input {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                      <FormField
+                        control={form.control}
+                        name="birthday"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-col">
+                            <FormLabel>Date of birth</FormLabel>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <FormControl>
+                                  <Button
+                                    variant={"outline"}
+                                    className={cn(
+                                      "w-full pl-3 text-left font-normal",
+                                      !field.value && "text-muted-foreground"
+                                    )}
+                                  >
+                                    {field.value ? (
+                                      format(field.value, "PPP")
+                                    ) : (
+                                      <span>Pick a date</span>
+                                    )}
+                                    <Trash2 className="ml-auto h-4 w-4 opacity-50" />
+                                  </Button>
+                                </FormControl>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0" align="start">
+                                <Calendar
+                                  mode="single"
+                                  selected={field.value}
+                                  onSelect={field.onChange}
+                                  disabled={(date) =>
+                                    date > new Date() || date < new Date("1900-01-01")
+                                  }
+                                  initialFocus
+                                />
+                              </PopoverContent>
+                            </Popover>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
 
-                    <FormField
-                      control={form.control}
-                      name="displayName"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Display Name</FormLabel>
-                          <FormControl>
-                            <Input {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                      <FormField
+                        control={form.control}
+                        name="password"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Password</FormLabel>
+                            <FormControl>
+                              <Input {...field} type="password" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
 
-                    <FormField
-                      control={form.control}
-                      name="email"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Email (Optional)</FormLabel>
-                          <FormControl>
-                            <Input type="email" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="password"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Password</FormLabel>
-                          <FormControl>
-                            <Input type="password" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="birthday"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-col">
-                          <FormLabel>Birthday (Optional)</FormLabel>
-                          <Popover>
-                            <PopoverTrigger asChild>
+                      <FormField
+                        control={form.control}
+                        name="relationType"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Relation Type</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
                               <FormControl>
-                                <Button
-                                  variant={"outline"}
-                                  className={cn(
-                                    "w-full pl-3 text-left font-normal",
-                                    !field.value && "text-muted-foreground"
-                                  )}
-                                >
-                                  {field.value ? (
-                                    format(field.value, "PPP")
-                                  ) : (
-                                    <span>Pick a date</span>
-                                  )}
-                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                </Button>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select a relation type" />
+                                </SelectTrigger>
                               </FormControl>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                              <Calendar
-                                mode="single"
-                                selected={field.value}
-                                onSelect={field.onChange}
-                                disabled={(date) =>
-                                  date > new Date() || date < new Date("1900-01-01")
-                                }
-                                initialFocus
-                              />
-                            </PopoverContent>
-                          </Popover>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                              <SelectContent>
+                                <SelectItem value="parent">Parent</SelectItem>
+                                <SelectItem value="child">Child</SelectItem>
+                                <SelectItem value="sibling">Sibling</SelectItem>
+                                <SelectItem value="spouse">Spouse</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
 
-                    <FormField
-                      control={form.control}
-                      name="relationType"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Relation Type</FormLabel>
-                          <Select
-                            value={field.value}
-                            onValueChange={field.onChange}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select relation type" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="parent">Parent</SelectItem>
-                              <SelectItem value="child">Child</SelectItem>
-                              <SelectItem value="sibling">Sibling</SelectItem>
-                              <SelectItem value="spouse">Spouse</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <Button type="submit" className="w-full">
-                      Create Member
-                    </Button>
-                  </form>
-                </Form>
-              ) : (
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Select Member</label>
-                    <Select
-                      value={selectedRelativeMemberId}
-                      onValueChange={setSelectedRelativeMemberId}
-                    >
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setIsCreatingUser(false)}
+                        >
+                          Back
+                        </Button>
+                        <Button type="submit">Add Member</Button>
+                      </div>
+                    </form>
+                  </Form>
+                ) : (
+                  <div className="space-y-4">
+                    <Select onValueChange={setSelectedRelativeMemberId}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select a family member" />
                       </SelectTrigger>
                       <SelectContent>
                         {allUsers
                           .filter((u) => u.id !== user?.id)
-                          .map((user) => (
-                            <SelectItem key={user.id} value={user.id.toString()}>
-                              {user.displayName || user.username}
+                          .map((member) => (
+                            <SelectItem key={member.id} value={member.id.toString()}>
+                              {member.displayName || member.username}
                             </SelectItem>
                           ))}
                       </SelectContent>
                     </Select>
-                  </div>
 
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Relation Type</label>
-                    <Select
-                      value={relationType}
-                      onValueChange={setRelationType}
-                    >
+                    <Select onValueChange={setRelationType}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select relation type" />
+                        <SelectValue placeholder="Select a relation type" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="parent">Parent</SelectItem>
@@ -1220,21 +817,20 @@ function FamilyTree({ onUserClick, rootUserId }: FamilyTreeProps) {
                         <SelectItem value="spouse">Spouse</SelectItem>
                       </SelectContent>
                     </Select>
-                  </div>
 
-                  <Button
-                    className="w-full"
-                    disabled={!selectedRelativeMemberId || !relationType}
-                    onClick={handleAddRelation}
-                  >
-                    Add Relation
-                  </Button>
-                </div>
-              )}
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
+                    <div className="flex justify-end gap-2">
+                      <Button variant="outline" onClick={() => setIsCreatingUser(true)}>
+                        Create New
+                      </Button>
+                      <Button onClick={handleAddRelation}>Add Relation</Button>
+                    </div>
+                  </div>
+                )}
+              </DialogContent>
+            </Dialog>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
