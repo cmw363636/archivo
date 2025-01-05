@@ -1117,9 +1117,9 @@ export function registerRoutes(app: Express): Server {
       return res.status(401).send("Not authenticated");
     }
 
-    try {
-      const userId = req.query.userId ? parseInt(req.query.userId as string) : req.user.id;
+    const userId = req.query.userId ? parseInt(req.query.userId as string) : req.user.id;
 
+    try {
       const userMemories = await db.query.memories.findMany({
         where: eq(memories.userId, userId),
         orderBy: [desc(memories.createdAt)],
