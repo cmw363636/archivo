@@ -2,8 +2,8 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { db } from "@db";
-import { mediaItems, mediaTags, familyRelations, users, albums, albumMembers } from "@db/schema";
-import { and, eq, or } from "drizzle-orm";
+import { mediaItems, mediaTags, familyRelations, users, albums, albumMembers, memories } from "@db/schema";
+import { and, eq, or, desc } from "drizzle-orm";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -1029,7 +1029,7 @@ export function registerRoutes(app: Express): Server {
 
     try {
       const [updatedUser] = await db
-        .update(users)
+                .update(users)
         .set({
           dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
           email,
@@ -1110,6 +1110,56 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error('Error updating user story:', error);
       res.status(500).send("Error updating user story");
+    }
+  });
+
+  app.get("/api/memories", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    try {
+      const userId = req.query.userId ? parseInt(req.query.userId as string) : req.user.id;
+
+      const userMemories = await db.query.memories.findMany({
+        where: eq(memories.userId, userId),
+        orderBy: [desc(memories.createdAt)],
+      });
+
+      res.json(userMemories);
+    } catch (error) {
+      console.error('Error fetching memories:', error);
+      res.status(500).send("Error fetching memories");
+    }
+  });
+
+  app.post("/api/memories", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    try {
+      const { title, content } = req.body;
+
+      if (!title?.trim() || !content?.trim()) {
+        return res.status(400).send("Title and content are required");
+      }
+
+      const [memory] = await db
+        .insert(memories)
+        .values({
+          userId: req.user.id,
+          title: title.trim(),
+          content: content.trim(),
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning();
+
+      res.json(memory);
+    } catch (error) {
+      console.error('Error creating memory:', error);
+      res.status(500).send("Error creating memory");
     }
   });
 
