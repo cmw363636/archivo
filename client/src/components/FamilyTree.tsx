@@ -60,7 +60,7 @@ type FamilyRelation = {
   id: number;
   fromUserId: number;
   toUserId: number;
-  relationType: 'parent' | 'child' | 'sibling' | 'spouse' | 'grandparent' | 'grandchild' | 'aunt/uncle' | 'niece/nephew' | 'cousin';
+  relationType: 'parent' | 'child' | 'sibling' | 'spouse';
   fromUser: FamilyMember;
   toUser: FamilyMember;
 };
@@ -73,11 +73,7 @@ const relationTypeMap = {
   parent: 'child',
   child: 'parent',
   spouse: 'spouse',
-  sibling: 'sibling',
-  grandparent: 'grandchild',
-  grandchild: 'grandparent',
-  'aunt/uncle': 'niece/nephew',
-  'niece/nephew': 'aunt/uncle'
+  sibling: 'sibling'
 } as const;
 
 const newUserSchema = z.object({
@@ -86,7 +82,7 @@ const newUserSchema = z.object({
   email: z.string().email("Invalid email").optional(),
   birthday: z.date().optional(),
   password: z.string().min(6, "Password must be at least 6 characters"),
-  relationType: z.enum(["parent", "child", "sibling", "spouse", "grandparent", "grandchild", "aunt/uncle", "niece/nephew", "cousin"], {
+  relationType: z.enum(["parent", "child", "sibling", "spouse"], {
     required_error: "Please select a relation type",
   }),
 });
@@ -187,9 +183,6 @@ function FamilyTree({ onUserClick }: FamilyTreeProps) {
 
   const addRelationMutation = useMutation({
     mutationFn: async (data: { toUserId: number; relationType: string }) => {
-      // When adding a parent relationship:
-      // toUserId: the ID of the user we want to be our parent
-      // targetUserId: the ID of the child (current user or selected member)
       const response = await fetch("/api/family", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -385,37 +378,33 @@ function FamilyTree({ onUserClick }: FamilyTreeProps) {
     const member = isFromUser ? relation.toUser : relation.fromUser;
     const relationType = isFromUser
       ? relation.relationType
-      : relationTypeMap[relation.relationType as keyof typeof relationTypeMap];
+      : relationTypeMap[relation.relationType];
 
-    // Skip if this is an inherited relationship that will be handled by the parent relationship
-    if (relationType === 'grandchild' || relationType === 'aunt/uncle' || relationType === 'niece/nephew') {
-      return acc;
+    if (!acc[relationType]) {
+      acc[relationType] = [];
     }
 
-    let groupType = relationType;
-
-    // For parent relationships, check if there's a grandparent relationship
-    if (relationType === 'parent') {
-      const hasGrandparentRelation = relations.some(r =>
-        (r.fromUserId === member.id && r.toUserId === user.id && r.relationType === 'grandparent') ||
-        (r.toUserId === member.id && r.fromUserId === user.id && r.relationType === 'grandchild')
-      );
-
-      if (hasGrandparentRelation) {
-        groupType = 'grandparent';
-      }
-    }
-
-    if (!acc[groupType]) {
-      acc[groupType] = [];
-    }
-
-    if (!acc[groupType].some(m => m.id === member.id)) {
-      acc[groupType].push(member);
+    if (!acc[relationType].some(m => m.id === member.id)) {
+      acc[relationType].push(member);
     }
 
     return acc;
   }, {} as Record<string, FamilyMember[]>);
+
+  const getParentOfParent = (parentId: number): FamilyMember | undefined => {
+    const parentRelations = relations.filter(r => 
+      (r.fromUserId === parentId && r.relationType === 'child') ||
+      (r.toUserId === parentId && r.relationType === 'parent')
+    );
+
+    for (const relation of parentRelations) {
+      const potentialGrandparent = relation.fromUserId === parentId ? relation.toUser : relation.fromUser;
+      // Skip if this is the current user
+      if (potentialGrandparent.id === user.id) continue;
+      return potentialGrandparent;
+    }
+    return undefined;
+  };
 
   const renderTreeSvg = () => {
     const centerX = treeWidth / 2;
@@ -423,20 +412,57 @@ function FamilyTree({ onUserClick }: FamilyTreeProps) {
     const memberNodes: JSX.Element[] = [];
     const relationLines: JSX.Element[] = [];
 
-    // Render parents and grandparents
+    // Render parents and their parents (grandparents)
     if (familyGroups.parent) {
       const parentWidth = horizontalSpacing * (familyGroups.parent.length - 1);
       familyGroups.parent.forEach((parent, i) => {
-        // Check if this parent has a parent-child relationship in our relations
-        const isGrandparent = relations.some(r =>
-          (r.fromUserId === parent.id && r.toUserId === user.id && r.relationType === 'grandparent') ||
-          (r.toUserId === parent.id && r.fromUserId === user.id && r.relationType === 'grandchild')
-        );
-
-        const verticalOffset = isGrandparent ? verticalSpacing * 2 : verticalSpacing;
+        const parentOfParent = getParentOfParent(parent.id);
         const x = centerX - parentWidth / 2 + i * horizontalSpacing;
-        const y = centerY - verticalOffset;
+        const y = centerY - verticalSpacing;
 
+        // Render parent's parent (grandparent) if exists
+        if (parentOfParent) {
+          const grandparentY = y - verticalSpacing;
+          memberNodes.push(
+            <g
+              key={parentOfParent.id}
+              transform={`translate(${x},${grandparentY})`}
+              onClick={(e) => handleNodeClick(e, parentOfParent.id)}
+              style={{ cursor: 'pointer' }}
+            >
+              <circle
+                r={nodeRadius}
+                fill="hsl(var(--secondary))"
+                className="stroke-2 stroke-white"
+              />
+              <text
+                textAnchor="middle"
+                dy=".3em"
+                fill="hsl(var(--secondary-foreground))"
+                className="text-sm font-medium"
+                pointerEvents="none"
+              >
+                {parentOfParent.displayName || parentOfParent.username}
+              </text>
+            </g>
+          );
+
+          // Draw line from grandparent to parent
+          relationLines.push(
+            <line
+              key={`line-grandparent-${parentOfParent.id}-${parent.id}`}
+              x1={x}
+              y1={grandparentY + nodeRadius}
+              x2={x}
+              y2={y - nodeRadius}
+              stroke="hsl(var(--border))"
+              strokeWidth="2"
+              pointerEvents="none"
+            />
+          );
+        }
+
+        // Render parent
         memberNodes.push(
           <g
             key={parent.id}
@@ -461,51 +487,19 @@ function FamilyTree({ onUserClick }: FamilyTreeProps) {
           </g>
         );
 
-        // Draw connecting lines
+        // Draw line from parent to user
         relationLines.push(
           <line
             key={`line-parent-${parent.id}`}
             x1={x}
             y1={y + nodeRadius}
             x2={centerX}
-            y2={isGrandparent ? centerY - verticalSpacing : centerY - nodeRadius}
+            y2={centerY - nodeRadius}
             stroke="hsl(var(--border))"
             strokeWidth="2"
             pointerEvents="none"
           />
         );
-
-        // If grandparent, draw line to parent
-        if (isGrandparent) {
-          const parentRelation = relations.find(r =>
-            (r.fromUserId === parent.id && r.relationType === 'parent') ||
-            (r.toUserId === parent.id && r.relationType === 'child')
-          );
-
-          if (parentRelation) {
-            const childId = parentRelation.fromUserId === parent.id ? parentRelation.toUserId : parentRelation.fromUserId;
-            const childNode = familyGroups.parent.find(p => p.id === childId);
-
-            if (childNode) {
-              const childIndex = familyGroups.parent.indexOf(childNode);
-              const childX = centerX - parentWidth / 2 + childIndex * horizontalSpacing;
-              const childY = centerY - verticalSpacing;
-
-              relationLines.push(
-                <line
-                  key={`line-grandparent-${parent.id}-${childId}`}
-                  x1={x}
-                  y1={y + nodeRadius}
-                  x2={childX}
-                  y2={childY - nodeRadius}
-                  stroke="hsl(var(--border))"
-                  strokeWidth="2"
-                  pointerEvents="none"
-                />
-              );
-            }
-          }
-        }
       });
     }
 
@@ -668,33 +662,9 @@ function FamilyTree({ onUserClick }: FamilyTreeProps) {
         );
 
 
-
       });
     }
 
-
-    // Render cousins
-    if (familyGroups.cousin) {
-      const cousinWidth = horizontalSpacing * (familyGroups.cousin.length - 1);
-      const cousinYOffset = verticalSpacing * 2; // Place cousins at the same level as siblings
-      familyGroups.cousin.forEach((cousin, i) => {
-        const x = centerX - cousinWidth / 2 + i * horizontalSpacing;
-        const y = centerY + cousinYOffset;
-        memberNodes.push(
-          <g
-            key={cousin.id}
-            transform={`translate(${x},${y})`}
-            onClick={(e) => handleNodeClick(e, cousin.id)}
-            style={{ cursor: 'pointer' }}
-          >
-            <circle r={nodeRadius} fill="hsl(var(--secondary))" className="stroke-2 stroke-white" />
-            <text textAnchor="middle" dy=".3em" fill="hsl(var(--secondary-foreground))" className="text-sm font-medium" pointerEvents="none">
-              {cousin.displayName || cousin.username}
-            </text>
-          </g>
-        );
-      })
-    }
 
     return (
       <svg
@@ -767,7 +737,7 @@ function FamilyTree({ onUserClick }: FamilyTreeProps) {
                   const relatedUser = isFromUser ? relation.toUser : relation.fromUser;
                   const displayType = isFromUser
                     ? relation.relationType
-                    : relationTypeMap[relation.relationType as keyof typeof relationTypeMap];
+                    : relationTypeMap[relation.relationType];
 
                   return (
                     <li key={relation.id} className="flex items-center justify-between">
@@ -954,11 +924,6 @@ function FamilyTree({ onUserClick }: FamilyTreeProps) {
                             <SelectItem value="child">Child</SelectItem>
                             <SelectItem value="sibling">Sibling</SelectItem>
                             <SelectItem value="spouse">Spouse</SelectItem>
-                            <SelectItem value="grandparent">Grandparent</SelectItem>
-                            <SelectItem value="grandchild">Grandchild</SelectItem>
-                            <SelectItem value="aunt/uncle">Aunt/Uncle</SelectItem>
-                            <SelectItem value="niece/nephew">Niece/Nephew</SelectItem>
-                            <SelectItem value="cousin">Cousin</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -1008,11 +973,6 @@ function FamilyTree({ onUserClick }: FamilyTreeProps) {
                       <SelectItem value="child">Child</SelectItem>
                       <SelectItem value="sibling">Sibling</SelectItem>
                       <SelectItem value="spouse">Spouse</SelectItem>
-                      <SelectItem value="grandparent">Grandparent</SelectItem>
-                      <SelectItem value="grandchild">Grandchild</SelectItem>
-                      <SelectItem value="aunt/uncle">Aunt/Uncle</SelectItem>
-                      <SelectItem value="niece/nephew">Niece/Nephew</SelectItem>
-                      <SelectItem value="cousin">Cousin</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

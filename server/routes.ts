@@ -272,6 +272,7 @@ export function registerRoutes(app: Express): Server {
   });
 
 
+
   app.get("/api/media/tagged", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
@@ -807,10 +808,10 @@ export function registerRoutes(app: Express): Server {
       return res.status(401).send("Not authenticated");
     }
 
-    const { parentId, relationType, inheritRelations, targetUserId } = req.body;
+    const { parentId, relationType, targetUserId } = req.body;
     const childId = targetUserId || req.user.id;
 
-    const validRelationTypes = ['parent', 'child', 'sibling', 'spouse', 'grandparent', 'grandchild', 'aunt/uncle', 'niece/nephew', 'cousin'];
+    const validRelationTypes = ['parent', 'child', 'sibling', 'spouse'];
     if (!validRelationTypes.includes(relationType)) {
       return res.status(400).send("Invalid relation type");
     }
@@ -819,12 +820,7 @@ export function registerRoutes(app: Express): Server {
       parent: 'child',
       child: 'parent',
       spouse: 'spouse',
-      sibling: 'sibling',
-      grandparent: 'grandchild',
-      grandchild: 'grandparent',
-      'aunt/uncle': 'niece/nephew',
-      'niece/nephew': 'aunt/uncle',
-      cousin: 'cousin'
+      sibling: 'sibling'
     } as const;
 
     try {
@@ -832,8 +828,7 @@ export function registerRoutes(app: Express): Server {
         parentId,
         childId,
         relationType,
-        targetUserId,
-        inheritRelations
+        targetUserId
       });
 
       // For parent relationships
@@ -867,62 +862,6 @@ export function registerRoutes(app: Express): Server {
 
         console.log('Created child->parent relation:', childParentRelation);
 
-        if (inheritRelations) {
-          console.log('Inheriting relationships from parent:', parentId);
-
-          // Get all relations of the new parent
-          const parentRelations = await db.query.familyRelations.findMany({
-            where: or(
-              eq(familyRelations.fromUserId, parentId),
-              eq(familyRelations.toUserId, parentId)
-            ),
-          });
-
-          console.log('Found parent relations:', parentRelations);
-
-          for (const relation of parentRelations) {
-            const isFromParent = relation.fromUserId === parentId;
-            const otherUserId = isFromParent ? relation.toUserId : relation.fromUserId;
-            const otherRelationType = isFromParent ? relation.relationType : relationTypeMap[relation.relationType as keyof typeof relationTypeMap];
-
-            // Skip if trying to create relation with self
-            if (otherUserId === childId) continue;
-
-            console.log('Processing inherited relation:', {
-              otherUserId,
-              otherRelationType,
-              isFromParent
-            });
-
-            // If parent's relation is with their parent, they become grandparent to the child
-            if (otherRelationType === 'parent') {
-              // Create grandparent -> child relation
-              const [grandparentRelation] = await db
-                .insert(familyRelations)
-                .values({
-                  fromUserId: otherUserId, // The grandparent
-                  toUserId: childId,       // The child
-                  relationType: 'grandparent',
-                })
-                .returning();
-
-              console.log('Created grandparent relation:', grandparentRelation);
-
-              // Create child -> grandparent relation
-              const [grandchildRelation] = await db
-                .insert(familyRelations)
-                .values({
-                  fromUserId: childId,      // The child
-                  toUserId: otherUserId,    // The grandparent
-                  relationType: 'grandchild',
-                })
-                .returning();
-
-              console.log('Created grandchild relation:', grandchildRelation);
-            }
-          }
-        }
-
         return res.json(parentChildRelation);
       }
 
@@ -946,7 +885,7 @@ export function registerRoutes(app: Express): Server {
       console.log('Created primary relation:', relation);
 
       // Create the reciprocal relation
-      const reciprocalType = relationTypeMap[relationType as keyof typeof relationTypeMap];
+      const reciprocalType = relationTypeMap[relationType];
       const [reciprocalRelation] = await db
         .insert(familyRelations)
         .values({
@@ -965,12 +904,10 @@ export function registerRoutes(app: Express): Server {
         childId,
         parentId,
         relationType,
-        targetUserId,
-        inheritRelations
+        targetUserId
       });
       res.status(500).send("Error creating family relation");
     }
-
   });
 
   app.delete("/api/family/:relationId", async (req, res) => {
