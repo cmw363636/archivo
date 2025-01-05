@@ -1030,8 +1030,7 @@ export function registerRoutes(app: Express): Server {
     try {
       const [updatedUser] = await db
                 .update(users)
-        .set({
-          dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
+        .set({          dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
           email,
         })
         .where(eq(users.id, req.user.id))
