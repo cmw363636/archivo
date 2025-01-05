@@ -99,6 +99,7 @@ function FamilyTree({ onUserClick, rootUserId }: FamilyTreeProps) {
 
   // Use rootUserId if provided, otherwise fall back to logged-in user's ID
   const currentUserId = rootUserId ?? user?.id;
+  const isOwnTree = currentUserId === user?.id;
 
   const form = useForm<NewUserFormData>({
     resolver: zodResolver(newUserSchema),
@@ -127,8 +128,31 @@ function FamilyTree({ onUserClick, rootUserId }: FamilyTreeProps) {
 
   const { data: allUsers = [] } = useQuery<FamilyMember[]>({
     queryKey: ["/api/users"],
-    enabled: !!user,
+    enabled: !!user && isOwnTree,
   });
+
+  // Only show relations that belong to the viewed user
+  const familyGroups = relations.reduce((acc, relation) => {
+    if (relation.fromUserId !== currentUserId && relation.toUserId !== currentUserId) {
+      return acc;
+    }
+
+    const isFromUser = relation.fromUserId === currentUserId;
+    const member = isFromUser ? relation.toUser : relation.fromUser;
+    const relationType = isFromUser
+      ? relation.relationType
+      : relationTypeMap[relation.relationType];
+
+    if (!acc[relationType]) {
+      acc[relationType] = [];
+    }
+
+    if (!acc[relationType].some(m => m.id === member.id)) {
+      acc[relationType].push(member);
+    }
+
+    return acc;
+  }, {} as Record<string, FamilyMember[]>);
 
   const addRelationMutation = useMutation({
     mutationFn: async (data: { toUserId: number; relationType: string }) => {
@@ -136,9 +160,7 @@ function FamilyTree({ onUserClick, rootUserId }: FamilyTreeProps) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...(data.relationType === 'parent'
-            ? { parentId: data.toUserId }
-            : { toUserId: data.toUserId }),
+          toUserId: data.toUserId,
           relationType: data.relationType,
         }),
         credentials: "include",
@@ -641,7 +663,9 @@ function FamilyTree({ onUserClick, rootUserId }: FamilyTreeProps) {
     setIsDragging(false);
   };
 
-  const handleNodeClick = (event: React.MouseEvent, userId: number) => {
+  const handleNodeClick = (event: React.MouseEvent, userId: number | undefined) => {
+    if (!userId) return;
+
     event.stopPropagation();
     event.preventDefault();
     if (!isDragging && onUserClick) {
@@ -651,8 +675,7 @@ function FamilyTree({ onUserClick, rootUserId }: FamilyTreeProps) {
     }
   };
 
-
-  if (!currentUserId) {
+  if (!currentUserId || !displayUser) {
     return null;
   }
 
@@ -664,28 +687,6 @@ function FamilyTree({ onUserClick, rootUserId }: FamilyTreeProps) {
     );
   }
 
-  // Update family groups to use currentUserId instead of user.id
-  const familyGroups = relations.reduce((acc, relation) => {
-    const isFromUser = relation.fromUserId === currentUserId;
-    const member = isFromUser ? relation.toUser : relation.fromUser;
-    const relationType = isFromUser
-      ? relation.relationType
-      : relationTypeMap[relation.relationType];
-
-    if (!acc[relationType]) {
-      acc[relationType] = [];
-    }
-
-    if (!acc[relationType].some(m => m.id === member.id)) {
-      acc[relationType].push(member);
-    }
-
-    return acc;
-  }, {} as Record<string, FamilyMember[]>);
-
-  // Only show the add relation button if viewing own tree
-  const isOwnTree = currentUserId === user?.id;
-
   return (
     <div className="space-y-4">
       <Card>
@@ -693,7 +694,7 @@ function FamilyTree({ onUserClick, rootUserId }: FamilyTreeProps) {
           <div>
             <CardTitle>Family Tree</CardTitle>
             <CardDescription>
-              Visualizing family connections
+              {isOwnTree ? "Your family connections" : `${displayUser.displayName || displayUser.username}'s family connections`}
             </CardDescription>
           </div>
           {isOwnTree && (
@@ -704,7 +705,266 @@ function FamilyTree({ onUserClick, rootUserId }: FamilyTreeProps) {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="relative w-full overflow-hidden border rounded-lg">
-            {renderTreeSvg()}
+            {/* SVG Family Tree */}
+            <svg
+              width={2400}
+              height={1600}
+              className="max-w-full cursor-move"
+              ref={svgRef}
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseLeave}
+            >
+              <g transform={`translate(${position.x},${position.y})`}>
+                {/* Render parents and their parents (grandparents) */}
+                {familyGroups.parent && familyGroups.parent.map((parent, i) => {
+                  const parentOfParent = getParentOfParent(parent.id);
+                  const x = centerX - (familyGroups.parent.length -1) * 100 + i * 200;
+                  const y = centerY - 150;
+
+                  // Render parent's parent (grandparent) if exists
+                  if (parentOfParent) {
+                    const grandparentY = y - 150;
+                    return (
+                      <>
+                        <g
+                          key={parentOfParent.id}
+                          transform={`translate(${x},${grandparentY})`}
+                          onClick={(e) => handleNodeClick(e, parentOfParent.id)}
+                          style={{ cursor: 'pointer' }}
+                        >
+                          <circle
+                            r={40}
+                            fill="hsl(var(--secondary))"
+                            className="stroke-2 stroke-white"
+                          />
+                          <text
+                            textAnchor="middle"
+                            dy=".3em"
+                            fill="hsl(var(--secondary-foreground))"
+                            className="text-sm font-medium"
+                            pointerEvents="none"
+                          >
+                            {parentOfParent.displayName || parentOfParent.username}
+                          </text>
+                        </g>
+                        <line
+                          key={`line-grandparent-${parentOfParent.id}-${parent.id}`}
+                          x1={x}
+                          y1={grandparentY + 40}
+                          x2={x}
+                          y2={y - 40}
+                          stroke="hsl(var(--border))"
+                          strokeWidth="2"
+                          pointerEvents="none"
+                        />
+                      </>
+                    )
+                  }
+                  return (
+                    <>
+                      <g
+                        key={parent.id}
+                        transform={`translate(${x},${y})`}
+                        onClick={(e) => handleNodeClick(e, parent.id)}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        <circle
+                          r={40}
+                          fill="hsl(var(--secondary))"
+                          className="stroke-2 stroke-white"
+                        />
+                        <text
+                          textAnchor="middle"
+                          dy=".3em"
+                          fill="hsl(var(--secondary-foreground))"
+                          className="text-sm font-medium"
+                          pointerEvents="none"
+                        >
+                          {parent.displayName || parent.username}
+                        </text>
+                      </g>
+                      <line
+                        key={`line-parent-${parent.id}`}
+                        x1={x}
+                        y1={y + 40}
+                        x2={centerX}
+                        y2={centerY - 40}
+                        stroke="hsl(var(--border))"
+                        strokeWidth="2"
+                        pointerEvents="none"
+                      />
+                    </>
+                  )
+                })}
+                {/* Render children */}
+                {familyGroups.child && familyGroups.child.map((child, i) => {
+                  const x = centerX - (familyGroups.child.length - 1) * 100 + i * 200;
+                  const y = centerY + 150;
+                  return (
+                    <>
+                      <g
+                        key={child.id}
+                        transform={`translate(${x},${y})`}
+                        onClick={(e) => handleNodeClick(e, child.id)}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        <circle
+                          r={40}
+                          fill="hsl(var(--secondary))"
+                          className="stroke-2 stroke-white"
+                        />
+                        <text
+                          textAnchor="middle"
+                          dy=".3em"
+                          fill="hsl(var(--secondary-foreground))"
+                          className="text-sm font-medium"
+                          pointerEvents="none"
+                        >
+                          {child.displayName || child.username}
+                        </text>
+                      </g>
+                      <line
+                        key={`line-child-${child.id}`}
+                        x1={centerX}
+                        y1={centerY + 40}
+                        x2={x}
+                        y2={y - 40}
+                        stroke="hsl(var(--border))"
+                        strokeWidth="2"
+                        pointerEvents="none"
+                      />
+                    </>
+                  )
+                })}
+                {/* Render spouse */}
+                {familyGroups.spouse && familyGroups.spouse.map((spouse, i) => {
+                  const x = centerX - 200;
+                  const y = centerY;
+                  return (
+                    <>
+                      <g
+                        key={spouse.id}
+                        transform={`translate(${x},${y})`}
+                        onClick={(e) => handleNodeClick(e, spouse.id)}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        <circle
+                          r={40}
+                          fill="hsl(var(--secondary))"
+                          className="stroke-2 stroke-white"
+                        />
+                        <text
+                          textAnchor="middle"
+                          dy=".3em"
+                          fill="hsl(var(--secondary-foreground))"
+                          className="text-sm font-medium"
+                          pointerEvents="none"
+                        >
+                          {spouse.displayName || spouse.username}
+                        </text>
+                      </g>
+                      <g key={`line-spouse-${spouse.id}`}>
+                        <line
+                          x1={x + 40}
+                          y1={y}
+                          x2={centerX - 40}
+                          y2={centerY}
+                          stroke="hsl(var(--border))"
+                          strokeWidth="2"
+                          pointerEvents="none"
+                        />
+                        <text
+                          x={(x + centerX) / 2}
+                          y={y - 10}
+                          textAnchor="middle"
+                          fill="hsl(var(--muted-foreground))"
+                          className="text-xs"
+                          pointerEvents="none"
+                        >
+                          Spouse
+                        </text>
+                      </g>
+                    </>
+                  )
+                })}
+                {/* Render siblings */}
+                {familyGroups.sibling && familyGroups.sibling.map((sibling, i) => {
+                  const siblingStartX = centerX + 200;
+                  const x = siblingStartX + (i * 200);
+                  const y = centerY;
+                  return (
+                    <>
+                      <g
+                        key={sibling.id}
+                        transform={`translate(${x},${y})`}
+                        onClick={(e) => handleNodeClick(e, sibling.id)}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        <circle
+                          r={40}
+                          fill="hsl(var(--secondary))"
+                          className="stroke-2 stroke-white"
+                        />
+                        <text
+                          textAnchor="middle"
+                          dy=".3em"
+                          fill="hsl(var(--secondary-foreground))"
+                          className="text-sm font-medium"
+                          pointerEvents="none"
+                        >
+                          {sibling.displayName || sibling.username}
+                        </text>
+                      </g>
+                      <g key={`line-sibling-${sibling.id}`}>
+                        <line
+                          x1={i === 0 ? centerX + 40 : siblingStartX + ((i - 1) * 200) + 40}
+                          y1={centerY}
+                          x2={x - 40}
+                          y2={y}
+                          stroke="hsl(var(--border))"
+                          strokeWidth="2"
+                          pointerEvents="none"
+                        />
+                        <text
+                          x={(x + (i === 0 ? centerX : siblingStartX + ((i - 1) * 200))) / 2}
+                          y={y - 10}
+                          textAnchor="middle"
+                          fill="hsl(var(--muted-foreground))"
+                          className="text-xs"
+                          pointerEvents="none"
+                        >
+                          Sibling
+                        </text>
+                      </g>
+                    </>
+                  )
+                })}
+                {/* Center user node */}
+                <g
+                  key={displayUser?.id}
+                  transform={`translate(${centerX},${centerY})`}
+                  onClick={(e) => handleNodeClick(e, displayUser?.id)}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <circle
+                    r={40}
+                    fill="hsl(var(--primary))"
+                    className="stroke-2 stroke-white"
+                  />
+                  <text
+                    textAnchor="middle"
+                    dy=".3em"
+                    fill="white"
+                    className="text-sm font-medium"
+                    pointerEvents="none"
+                  >
+                    {displayUser?.displayName || displayUser?.username}
+                  </text>
+                </g>
+              </g>
+            </svg>
           </div>
 
           {isOwnTree && (
