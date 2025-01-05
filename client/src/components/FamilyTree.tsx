@@ -60,7 +60,7 @@ type FamilyRelation = {
 
 type FamilyTreeProps = {
   onUserClick?: (userId: number) => void;
-  rootUserId?: number; // New prop to specify which user's tree to display
+  rootUserId?: number;
 };
 
 const relationTypeMap = {
@@ -110,6 +110,15 @@ function FamilyTree({ onUserClick, rootUserId }: FamilyTreeProps) {
     },
   });
 
+  // Query to get the root user's information
+  const { data: rootUser } = useQuery<FamilyMember>({
+    queryKey: ["/api/users", currentUserId],
+    enabled: !!currentUserId && currentUserId !== user?.id,
+  });
+
+  // Display user is either the root user (if viewing someone else's tree) or the logged-in user
+  const displayUser = rootUser ?? user;
+
   // Updated query to fetch relations for the specified user
   const { data: relations = [], isLoading } = useQuery<FamilyRelation[]>({
     queryKey: ["/api/family", currentUserId],
@@ -127,9 +136,9 @@ function FamilyTree({ onUserClick, rootUserId }: FamilyTreeProps) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...(data.relationType === 'parent' 
-            ? { parentId: data.toUserId }  
-            : { toUserId: data.toUserId }), 
+          ...(data.relationType === 'parent'
+            ? { parentId: data.toUserId }
+            : { toUserId: data.toUserId }),
           relationType: data.relationType,
         }),
         credentials: "include",
@@ -583,9 +592,9 @@ function FamilyTree({ onUserClick, rootUserId }: FamilyTreeProps) {
           {memberNodes}
           {/* Center user node */}
           <g
-            key={user?.id}
+            key={displayUser?.id}
             transform={`translate(${centerX},${centerY})`}
-            onClick={(e) => handleNodeClick(e, user?.id)}
+            onClick={(e) => handleNodeClick(e, displayUser?.id)}
             style={{ cursor: 'pointer' }}
           >
             <circle
@@ -600,7 +609,7 @@ function FamilyTree({ onUserClick, rootUserId }: FamilyTreeProps) {
               className="text-sm font-medium"
               pointerEvents="none"
             >
-              {user?.displayName || user?.username}
+              {displayUser?.displayName || displayUser?.username}
             </text>
           </g>
         </g>
