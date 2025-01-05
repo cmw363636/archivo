@@ -272,7 +272,6 @@ export function registerRoutes(app: Express): Server {
   });
 
 
-
   app.get("/api/media/tagged", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
@@ -838,25 +837,25 @@ export function registerRoutes(app: Express): Server {
           child: childId
         });
 
-        // Create parent -> child relation
+        // Create the parent -> child relation
         const [parentChildRelation] = await db
           .insert(familyRelations)
           .values({
-            fromUserId: parentId,    // The new parent
-            toUserId: childId,       // The current user or target user
-            relationType: 'parent',
+            fromUserId: parentId,    // The parent
+            toUserId: childId,       // The current user
+            relationType: 'parent',  // The parent is the parent
           })
           .returning();
 
         console.log('Created parent->child relation:', parentChildRelation);
 
-        // Create child -> parent relation
+        // Create the corresponding child -> parent relation
         const [childParentRelation] = await db
           .insert(familyRelations)
           .values({
-            fromUserId: childId,     // The current user or target user
-            toUserId: parentId,      // The new parent
-            relationType: 'child',
+            fromUserId: childId,     // The current user
+            toUserId: parentId,      // The parent
+            relationType: 'child',   // The current user is the child
           })
           .returning();
 
@@ -867,7 +866,7 @@ export function registerRoutes(app: Express): Server {
 
       // For all other relationship types
       console.log('Creating non-parent relationship:', {
-        fromUserId: childId,
+        fromUserId: req.user.id,
         toUserId: parentId,
         type: relationType
       });
@@ -876,9 +875,9 @@ export function registerRoutes(app: Express): Server {
       const [relation] = await db
         .insert(familyRelations)
         .values({
-          fromUserId: childId,
-          toUserId: parentId,
-          relationType,
+          fromUserId: req.user.id,  // Always use the authenticated user as fromUserId
+          toUserId: parentId,       // The target user as toUserId
+          relationType,             // The specified relationship type
         })
         .returning();
 
@@ -889,9 +888,9 @@ export function registerRoutes(app: Express): Server {
       const [reciprocalRelation] = await db
         .insert(familyRelations)
         .values({
-          fromUserId: parentId,
-          toUserId: childId,
-          relationType: reciprocalType,
+          fromUserId: parentId,       // The target user
+          toUserId: req.user.id,      // The authenticated user
+          relationType: reciprocalType,// The reciprocal relationship type
         })
         .returning();
 
@@ -1032,8 +1031,8 @@ export function registerRoutes(app: Express): Server {
       const [updatedUser] = await db
         .update(users)
         .set({
-          ...(dateOfBirth && { dateOfBirth: new Date(dateOfBirth) }),
-          ...(email !== undefined && { email }),
+          dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
+          email,
         })
         .where(eq(users.id, req.user.id))
         .returning();
