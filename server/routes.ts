@@ -1031,7 +1031,7 @@ export function registerRoutes(app: Express): Server {
         .insert(users)
         .values({
           username,
-          password: hashedPassword,
+                    password: hashedPassword,
           displayName,
           email,
           dateOfBirth: birthday ? new Date(birthday) : null,
@@ -1171,26 +1171,25 @@ export function registerRoutes(app: Express): Server {
     try {
       const userId = req.query.userId ? parseInt(req.query.userId as string) : req.user.id;
 
-      const userMemories = await db.query.memories.findMany({
+      const memories = await db.query.memories.findMany({
         where: eq(memories.userId, userId),
-        orderBy: [desc(memories.createdAt)],
         with: {
           user: {
             columns: {
               username: true,
-              displayName: true,
+              displayName: true
             }
           }
-        }
+        },
+        orderBy: [desc(memories.createdAt)]
       });
 
-      res.json(userMemories);
+      res.json(memories);
     } catch (error) {
       console.error('Error fetching memories:', error);
       res.status(500).send("Error fetching memories");
     }
   });
-
   app.post("/api/memories", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");
