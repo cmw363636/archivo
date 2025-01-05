@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Link, useParams, useLocation } from "wouter";
-import { Menu, Link2, ArrowLeft, UserPlus2, Camera, Pencil } from "lucide-react";
+import { Menu, Link2, ArrowLeft, UserPlus2, Camera, Pencil, Trash2 } from "lucide-react";
 import type { MediaItem } from "@db/schema";
 import { MediaDialog } from "../components/MediaDialog";
 import { MediaGallery } from "../components/MediaGallery";
@@ -16,9 +16,19 @@ import AlbumManager from "../components/AlbumManager";
 import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input"; // Added import for Input component
+import { Input } from "@/components/ui/input";
 import { format } from "date-fns";
 import type { Memory } from "@db/schema";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from "@/components/ui/alert-dialog";
 
 interface ProfileUser {
   id: number;
@@ -40,9 +50,10 @@ export default function ProfilePage() {
   const queryClient = useQueryClient();
   const [isEditingStory, setIsEditingStory] = useState(false);
   const [storyDraft, setStoryDraft] = useState('');
-  const [isAddingMemory, setIsAddingMemory] = useState(false); // Added state for memory management
-  const [memoryTitle, setMemoryTitle] = useState("");       // Added state for memory management
-  const [memoryContent, setMemoryContent] = useState("");   // Added state for memory management
+  const [isAddingMemory, setIsAddingMemory] = useState(false);
+  const [memoryTitle, setMemoryTitle] = useState("");
+  const [memoryContent, setMemoryContent] = useState("");
+  const [memoryToDelete, setMemoryToDelete] = useState<Memory | null>(null);
 
   const userId = params.id ? parseInt(params.id) : user?.id;
   const isOwnProfile = userId === user?.id;
@@ -134,12 +145,12 @@ export default function ProfilePage() {
     setShowAddRelationDialog(true);
   };
 
-  const { data: memories = [] } = useQuery<Memory[]>({ // Added memories query
+  const { data: memories = [] } = useQuery<Memory[]>({
     queryKey: ["/api/memories", userId],
     enabled: !!userId,
   });
 
-  const addMemoryMutation = useMutation({ // Added add memory mutation
+  const addMemoryMutation = useMutation({
     mutationFn: async (data: { title: string; content: string }) => {
       const response = await fetch('/api/memories', {
         method: 'POST',
@@ -175,6 +186,35 @@ export default function ProfilePage() {
     },
   });
 
+  const deleteMemoryMutation = useMutation({
+    mutationFn: async (memoryId: number) => {
+      const response = await fetch(`/api/memories/${memoryId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/memories", userId] });
+      setMemoryToDelete(null);
+      toast({
+        title: "Success",
+        description: "Memory deleted successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
 
   if (!user || ((!displayUser || isLoadingProfile) && !isOwnProfile)) {
     return null;
@@ -557,7 +597,7 @@ export default function ProfilePage() {
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>Memories</CardTitle> {/* Added Memories Card */}
+                <CardTitle>Memories</CardTitle>
                 {isOwnProfile && !isAddingMemory && (
                   <Button onClick={() => setIsAddingMemory(true)}>
                     Add Memory
@@ -628,11 +668,23 @@ export default function ProfilePage() {
                   <div className="space-y-4">
                     {memories.slice(0, 3).map((memory) => (
                       <Card key={memory.id}>
-                        <CardHeader>
-                          <CardTitle>{memory.title}</CardTitle>
-                          <p className="text-sm text-muted-foreground">
-                            {format(new Date(memory.createdAt), 'PPP')}
-                          </p>
+                        <CardHeader className="flex flex-row items-start justify-between space-y-0">
+                          <div>
+                            <CardTitle>{memory.title}</CardTitle>
+                            <p className="text-sm text-muted-foreground">
+                              {format(new Date(memory.createdAt), 'PPP')}
+                            </p>
+                          </div>
+                          {isOwnProfile && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => setMemoryToDelete(memory)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
                         </CardHeader>
                         <CardContent>
                           <p className="whitespace-pre-wrap">{memory.content}</p>
@@ -681,6 +733,31 @@ export default function ProfilePage() {
             open={!!selectedMedia}
             onOpenChange={(open) => !open && setSelectedMedia(null)}
           />
+          <AlertDialog
+            open={!!memoryToDelete}
+            onOpenChange={(open) => !open && setMemoryToDelete(null)}
+          >
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete Memory</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to delete this memory? This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => {
+                    if (memoryToDelete) {
+                      deleteMemoryMutation.mutate(memoryToDelete.id);
+                    }
+                  }}
+                >
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </main>
     </div>

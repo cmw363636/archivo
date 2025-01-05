@@ -1163,6 +1163,45 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  app.delete("/api/memories/:memoryId", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const { memoryId } = req.params;
+
+    try {
+      const [memory] = await db
+        .select()
+        .from(memories)
+        .where(
+          and(
+            eq(memories.id, parseInt(memoryId)),
+            eq(memories.userId, req.user.id)
+          )
+        )
+        .limit(1);
+
+      if (!memory) {
+        return res.status(404).send("Memory not found or unauthorized");
+      }
+
+      await db
+        .delete(memories)
+        .where(
+          and(
+            eq(memories.id, parseInt(memoryId)),
+            eq(memories.userId, req.user.id)
+          )
+        );
+
+      res.json({ message: "Memory deleted successfully" });
+    } catch (error) {
+      console.error('Error deleting memory:', error);
+      res.status(500).send("Error deleting memory");
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
