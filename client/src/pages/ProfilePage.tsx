@@ -378,7 +378,9 @@ export default function ProfilePage() {
                 </div>
               </CardContent>
             </Card>
+          </div>
 
+          <div className="space-y-8">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>Tagged Media</CardTitle>
@@ -429,6 +431,89 @@ export default function ProfilePage() {
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>Story</CardTitle>
+                {isOwnProfile && !isEditingStory && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setIsEditingStory(true)}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                )}
+              </CardHeader>
+              <CardContent>
+                {isOwnProfile && isEditingStory ? (
+                  <div className="space-y-4">
+                    <Textarea
+                      placeholder="Share your story, milestones, or anything about yourself..."
+                      value={storyDraft}
+                      onChange={(e) => setStoryDraft(e.target.value)}
+                      className="min-h-[200px]"
+                    />
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setIsEditingStory(false);
+                          setStoryDraft(displayUser?.story || '');
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        onClick={async () => {
+                          try {
+                            const response = await fetch('/api/users/story', {
+                              method: 'POST',
+                              headers: {
+                                'Content-Type': 'application/json',
+                              },
+                              body: JSON.stringify({ story: storyDraft }),
+                              credentials: 'include',
+                            });
+
+                            if (!response.ok) {
+                              throw new Error(await response.text());
+                            }
+
+                            await queryClient.invalidateQueries({ queryKey: ["/api/users", userId] });
+                            setIsEditingStory(false);
+                            toast({
+                              title: "Success",
+                              description: "Your story has been updated",
+                            });
+                          } catch (error) {
+                            toast({
+                              title: "Error",
+                              description: error instanceof Error ? error.message : "Failed to update story",
+                              variant: "destructive",
+                            });
+                          }
+                        }}
+                      >
+                        Save
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="prose prose-sm max-w-none">
+                    {displayUser?.story ? (
+                      <p className="whitespace-pre-wrap">{displayUser.story}</p>
+                    ) : (
+                      <p className="text-muted-foreground">
+                        {isOwnProfile
+                          ? "Share your story by clicking the edit button above..."
+                          : "No story shared yet."}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
                 <CardTitle>
                   {isOwnProfile
                     ? "Your Family Tree"
@@ -447,7 +532,6 @@ export default function ProfilePage() {
               </CardContent>
             </Card>
           </div>
-
           <AddFamilyMemberDialog
             open={showAddRelationDialog}
             onOpenChange={setShowAddRelationDialog}
