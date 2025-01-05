@@ -1029,7 +1029,7 @@ export function registerRoutes(app: Express): Server {
 
     try {
       const [updatedUser] = await db
-                .update(users)
+        .update(users)
         .set({          dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
           email,
         })
@@ -1117,12 +1117,12 @@ export function registerRoutes(app: Express): Server {
       return res.status(401).send("Not authenticated");
     }
 
-    const userId = req.query.userId ? parseInt(req.query.userId as string) : req.user.id;
-
     try {
+      const userId = req.query.userId ? parseInt(req.query.userId as string) : req.user.id;
+
       const userMemories = await db.query.memories.findMany({
         where: eq(memories.userId, userId),
-        orderBy: [desc(memories.createdAt)],
+        orderBy: (memories, { desc }) => [desc(memories.createdAt)],
       });
 
       res.json(userMemories);
