@@ -94,9 +94,6 @@ function FamilyTree({ onUserClick }: FamilyTreeProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [, navigate] = useLocation();
-  const [selectedMember, setSelectedMember] = useState<FamilyMember | null>(null);
-  const [hoveredMember, setHoveredMember] = useState<FamilyMember | null>(null);
-  const [isAddingRelation, setIsAddingRelation] = useState(false);
   const [selectedRelativeMemberId, setSelectedRelativeMemberId] = useState<string>("");
   const [relationType, setRelationType] = useState<string>("");
   const [position, setPosition] = useState({ x: 0, y: 0 });
@@ -104,6 +101,7 @@ function FamilyTree({ onUserClick }: FamilyTreeProps) {
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const svgRef = useRef<SVGSVGElement>(null);
   const [isCreatingUser, setIsCreatingUser] = useState(false);
+  const [isAddingRelation, setIsAddingRelation] = useState(false);
 
   const form = useForm<NewUserFormData>({
     resolver: zodResolver(newUserSchema),
@@ -125,72 +123,16 @@ function FamilyTree({ onUserClick }: FamilyTreeProps) {
     enabled: !!user,
   });
 
-  const getRelationship = (hoveredMemberId: number) => {
-    if (!user) return null;
-
-    const relation = relations.find(r =>
-      (r.fromUserId === user.id && r.toUserId === hoveredMemberId) ||
-      (r.fromUserId === hoveredMemberId && r.toUserId === user.id)
-    );
-
-    if (!relation) return null;
-
-    if (relation.fromUserId === user.id) {
-      return relation.relationType === 'spouse'
-        ? 'Your spouse'
-        : `Your ${relation.relationType}`;
-    } else {
-      const inverseRelation = relationTypeMap[relation.relationType];
-      return inverseRelation === 'spouse'
-        ? 'Your spouse'
-        : `Your ${inverseRelation}`;
-    }
-  };
-
-  const handleMouseDown = (event: React.MouseEvent) => {
-    if (event.button !== 0) return;
-    setIsDragging(true);
-    setDragStart({
-      x: event.clientX - position.x,
-      y: event.clientY - position.y
-    });
-  };
-
-  const handleMouseMove = (event: React.MouseEvent) => {
-    if (!isDragging) return;
-    const newX = event.clientX - dragStart.x;
-    const newY = event.clientY - dragStart.y;
-    setPosition({ x: newX, y: newY });
-  };
-
-  const handleMouseUp = () => {
-    setIsDragging(false);
-  };
-
-  const handleMouseLeave = () => {
-    setIsDragging(false);
-  };
-
-  const handleNodeClick = (event: React.MouseEvent, userId: number) => {
-    event.stopPropagation();
-    event.preventDefault();
-    if (!isDragging && onUserClick) {
-      onUserClick(userId);
-    } else if (!isDragging) {
-      navigate(`/profile/${userId}`);
-    }
-  };
-
   const addRelationMutation = useMutation({
     mutationFn: async (data: { toUserId: number; relationType: string }) => {
       const response = await fetch("/api/family", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          parentId: data.toUserId,
+          ...(data.relationType === 'parent' 
+            ? { parentId: data.toUserId }  
+            : { toUserId: data.toUserId }), 
           relationType: data.relationType,
-          targetUserId: selectedMember?.id,
-          inheritRelations: true
         }),
         credentials: "include",
       });
@@ -355,44 +297,64 @@ function FamilyTree({ onUserClick }: FamilyTreeProps) {
     });
   };
 
-  if (!user) {
-    return null;
-  }
+  const getRelationship = (hoveredMemberId: number) => {
+    if (!user) return null;
 
-  if (isLoading) {
-    return (
-      <div className="space-y-4">
-        <div className="h-[400px] w-full bg-muted animate-pulse rounded-lg" />
-      </div>
+    const relation = relations.find(r =>
+      (r.fromUserId === user.id && r.toUserId === hoveredMemberId) ||
+      (r.fromUserId === hoveredMemberId && r.toUserId === user.id)
     );
-  }
 
-  const treeWidth = 2400;
-  const treeHeight = 1600;
-  const nodeRadius = 40;
-  const verticalSpacing = 150;
-  const horizontalSpacing = 200;
+    if (!relation) return null;
 
-  const familyGroups = relations.reduce((acc, relation) => {
-    const isFromUser = relation.fromUserId === user.id;
-    const member = isFromUser ? relation.toUser : relation.fromUser;
-    const relationType = isFromUser
-      ? relation.relationType
-      : relationTypeMap[relation.relationType];
-
-    if (!acc[relationType]) {
-      acc[relationType] = [];
+    if (relation.fromUserId === user.id) {
+      return relation.relationType === 'spouse'
+        ? 'Your spouse'
+        : `Your ${relation.relationType}`;
+    } else {
+      const inverseRelation = relationTypeMap[relation.relationType];
+      return inverseRelation === 'spouse'
+        ? 'Your spouse'
+        : `Your ${inverseRelation}`;
     }
+  };
 
-    if (!acc[relationType].some(m => m.id === member.id)) {
-      acc[relationType].push(member);
+  const handleMouseDown = (event: React.MouseEvent) => {
+    if (event.button !== 0) return;
+    setIsDragging(true);
+    setDragStart({
+      x: event.clientX - position.x,
+      y: event.clientY - position.y
+    });
+  };
+
+  const handleMouseMove = (event: React.MouseEvent) => {
+    if (!isDragging) return;
+    const newX = event.clientX - dragStart.x;
+    const newY = event.clientY - dragStart.y;
+    setPosition({ x: newX, y: newY });
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  const handleMouseLeave = () => {
+    setIsDragging(false);
+  };
+
+  const handleNodeClick = (event: React.MouseEvent, userId: number) => {
+    event.stopPropagation();
+    event.preventDefault();
+    if (!isDragging && onUserClick) {
+      onUserClick(userId);
+    } else if (!isDragging) {
+      navigate(`/profile/${userId}`);
     }
-
-    return acc;
-  }, {} as Record<string, FamilyMember[]>);
+  };
 
   const getParentOfParent = (parentId: number): FamilyMember | undefined => {
-    const parentRelations = relations.filter(r => 
+    const parentRelations = relations.filter(r =>
       (r.fromUserId === parentId && r.relationType === 'child') ||
       (r.toUserId === parentId && r.relationType === 'parent')
     );
@@ -407,22 +369,22 @@ function FamilyTree({ onUserClick }: FamilyTreeProps) {
   };
 
   const renderTreeSvg = () => {
-    const centerX = treeWidth / 2;
-    const centerY = treeHeight / 2;
+    const centerX = 2400 / 2;
+    const centerY = 1600 / 2;
     const memberNodes: JSX.Element[] = [];
     const relationLines: JSX.Element[] = [];
 
     // Render parents and their parents (grandparents)
     if (familyGroups.parent) {
-      const parentWidth = horizontalSpacing * (familyGroups.parent.length - 1);
+      const parentWidth = 200 * (familyGroups.parent.length - 1);
       familyGroups.parent.forEach((parent, i) => {
         const parentOfParent = getParentOfParent(parent.id);
-        const x = centerX - parentWidth / 2 + i * horizontalSpacing;
-        const y = centerY - verticalSpacing;
+        const x = centerX - parentWidth / 2 + i * 200;
+        const y = centerY - 150;
 
         // Render parent's parent (grandparent) if exists
         if (parentOfParent) {
-          const grandparentY = y - verticalSpacing;
+          const grandparentY = y - 150;
           memberNodes.push(
             <g
               key={parentOfParent.id}
@@ -431,7 +393,7 @@ function FamilyTree({ onUserClick }: FamilyTreeProps) {
               style={{ cursor: 'pointer' }}
             >
               <circle
-                r={nodeRadius}
+                r={40}
                 fill="hsl(var(--secondary))"
                 className="stroke-2 stroke-white"
               />
@@ -452,9 +414,9 @@ function FamilyTree({ onUserClick }: FamilyTreeProps) {
             <line
               key={`line-grandparent-${parentOfParent.id}-${parent.id}`}
               x1={x}
-              y1={grandparentY + nodeRadius}
+              y1={grandparentY + 40}
               x2={x}
-              y2={y - nodeRadius}
+              y2={y - 40}
               stroke="hsl(var(--border))"
               strokeWidth="2"
               pointerEvents="none"
@@ -471,7 +433,7 @@ function FamilyTree({ onUserClick }: FamilyTreeProps) {
             style={{ cursor: 'pointer' }}
           >
             <circle
-              r={nodeRadius}
+              r={40}
               fill="hsl(var(--secondary))"
               className="stroke-2 stroke-white"
             />
@@ -492,9 +454,9 @@ function FamilyTree({ onUserClick }: FamilyTreeProps) {
           <line
             key={`line-parent-${parent.id}`}
             x1={x}
-            y1={y + nodeRadius}
+            y1={y + 40}
             x2={centerX}
-            y2={centerY - nodeRadius}
+            y2={centerY - 40}
             stroke="hsl(var(--border))"
             strokeWidth="2"
             pointerEvents="none"
@@ -505,10 +467,10 @@ function FamilyTree({ onUserClick }: FamilyTreeProps) {
 
     // Render children
     if (familyGroups.child) {
-      const childWidth = horizontalSpacing * (familyGroups.child.length - 1);
+      const childWidth = 200 * (familyGroups.child.length - 1);
       familyGroups.child.forEach((child, i) => {
-        const x = centerX - childWidth / 2 + i * horizontalSpacing;
-        const y = centerY + verticalSpacing;
+        const x = centerX - childWidth / 2 + i * 200;
+        const y = centerY + 150;
 
         memberNodes.push(
           <g
@@ -518,7 +480,7 @@ function FamilyTree({ onUserClick }: FamilyTreeProps) {
             style={{ cursor: 'pointer' }}
           >
             <circle
-              r={nodeRadius}
+              r={40}
               fill="hsl(var(--secondary))"
               className="stroke-2 stroke-white"
             />
@@ -538,9 +500,9 @@ function FamilyTree({ onUserClick }: FamilyTreeProps) {
           <line
             key={`line-child-${child.id}`}
             x1={centerX}
-            y1={centerY + nodeRadius}
+            y1={centerY + 40}
             x2={x}
-            y2={y - nodeRadius}
+            y2={y - 40}
             stroke="hsl(var(--border))"
             strokeWidth="2"
             pointerEvents="none"
@@ -552,7 +514,7 @@ function FamilyTree({ onUserClick }: FamilyTreeProps) {
     // Render spouse
     if (familyGroups.spouse) {
       familyGroups.spouse.forEach((spouse, i) => {
-        const x = centerX - horizontalSpacing;
+        const x = centerX - 200;
         const y = centerY;
 
         memberNodes.push(
@@ -563,7 +525,7 @@ function FamilyTree({ onUserClick }: FamilyTreeProps) {
             style={{ cursor: 'pointer' }}
           >
             <circle
-              r={nodeRadius}
+              r={40}
               fill="hsl(var(--secondary))"
               className="stroke-2 stroke-white"
             />
@@ -582,9 +544,9 @@ function FamilyTree({ onUserClick }: FamilyTreeProps) {
         relationLines.push(
           <g key={`line-spouse-${spouse.id}`}>
             <line
-              x1={x + nodeRadius}
+              x1={x + 40}
               y1={y}
-              x2={centerX - nodeRadius}
+              x2={centerX - 40}
               y2={centerY}
               stroke="hsl(var(--border))"
               strokeWidth="2"
@@ -607,10 +569,10 @@ function FamilyTree({ onUserClick }: FamilyTreeProps) {
 
     // Render siblings
     if (familyGroups.sibling) {
-      const siblingStartX = centerX + horizontalSpacing;
+      const siblingStartX = centerX + 200;
 
       familyGroups.sibling.forEach((sibling, i) => {
-        const x = siblingStartX + (i * horizontalSpacing);
+        const x = siblingStartX + (i * 200);
         const y = centerY;
 
         memberNodes.push(
@@ -621,7 +583,7 @@ function FamilyTree({ onUserClick }: FamilyTreeProps) {
             style={{ cursor: 'pointer' }}
           >
             <circle
-              r={nodeRadius}
+              r={40}
               fill="hsl(var(--secondary))"
               className="stroke-2 stroke-white"
             />
@@ -640,16 +602,16 @@ function FamilyTree({ onUserClick }: FamilyTreeProps) {
         relationLines.push(
           <g key={`line-sibling-${sibling.id}`}>
             <line
-              x1={i === 0 ? centerX + nodeRadius : siblingStartX + ((i - 1) * horizontalSpacing) + nodeRadius}
+              x1={i === 0 ? centerX + 40 : siblingStartX + ((i - 1) * 200) + 40}
               y1={centerY}
-              x2={x - nodeRadius}
+              x2={x - 40}
               y2={y}
               stroke="hsl(var(--border))"
               strokeWidth="2"
               pointerEvents="none"
             />
             <text
-              x={(x + (i === 0 ? centerX : siblingStartX + ((i - 1) * horizontalSpacing))) / 2}
+              x={(x + (i === 0 ? centerX : siblingStartX + ((i - 1) * 200))) / 2}
               y={y - 10}
               textAnchor="middle"
               fill="hsl(var(--muted-foreground))"
@@ -666,10 +628,11 @@ function FamilyTree({ onUserClick }: FamilyTreeProps) {
     }
 
 
+
     return (
       <svg
-        width={treeWidth}
-        height={treeHeight}
+        width={2400}
+        height={1600}
         className="max-w-full cursor-move"
         ref={svgRef}
         onMouseDown={handleMouseDown}
@@ -688,7 +651,7 @@ function FamilyTree({ onUserClick }: FamilyTreeProps) {
             style={{ cursor: 'pointer' }}
           >
             <circle
-              r={nodeRadius}
+              r={40}
               fill="hsl(var(--primary))"
               className="stroke-2 stroke-white"
             />
@@ -706,6 +669,37 @@ function FamilyTree({ onUserClick }: FamilyTreeProps) {
       </svg>
     );
   };
+
+  if (!user) {
+    return null;
+  }
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <div className="h-[400px] w-full bg-muted animate-pulse rounded-lg" />
+      </div>
+    );
+  }
+
+  const familyGroups = relations.reduce((acc, relation) => {
+    const isFromUser = relation.fromUserId === user.id;
+    const member = isFromUser ? relation.toUser : relation.fromUser;
+    const relationType = isFromUser
+      ? relation.relationType
+      : relationTypeMap[relation.relationType];
+
+    if (!acc[relationType]) {
+      acc[relationType] = [];
+    }
+
+    if (!acc[relationType].some(m => m.id === member.id)) {
+      acc[relationType].push(member);
+    }
+
+    return acc;
+  }, {} as Record<string, FamilyMember[]>);
+
 
   return (
     <div className="space-y-4">
