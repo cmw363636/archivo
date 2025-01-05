@@ -1122,7 +1122,15 @@ export function registerRoutes(app: Express): Server {
 
       const userMemories = await db.query.memories.findMany({
         where: eq(memories.userId, userId),
-        orderBy: (memories, { desc }) => [desc(memories.createdAt)],
+        orderBy: [desc(memories.createdAt)],
+        with: {
+          user: {
+            columns: {
+              username: true,
+              displayName: true,
+            }
+          }
+        }
       });
 
       res.json(userMemories);

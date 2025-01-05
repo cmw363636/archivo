@@ -443,9 +443,14 @@ export default function ProfilePage() {
                         )}
                         <div className="flex-1">
                           <h4 className="font-medium">{media.title}</h4>
-                          <p className="text-sm text-muted-foreground">
-                            {media.description}
-                          </p>
+                          <div className="space-y-1">
+                            <p className="text-sm text-muted-foreground">
+                              {media.description}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              Posted by {media.user?.displayName || media.user?.username}
+                            </p>
+                          </div>
                           {media.type === 'post' && media.website_url && (
                             <div className="mt-1 flex items-center gap-1 text-sm text-primary">
                               <Link2 className="h-3 w-3" />
@@ -671,9 +676,14 @@ export default function ProfilePage() {
                         <CardHeader className="flex flex-row items-start justify-between space-y-0">
                           <div>
                             <CardTitle>{memory.title}</CardTitle>
-                            <p className="text-sm text-muted-foreground">
-                              {format(new Date(memory.createdAt), 'PPP')}
-                            </p>
+                            <div className="space-y-1">
+                              <p className="text-sm text-muted-foreground">
+                                Posted by {memory.user?.displayName || memory.user?.username}
+                              </p>
+                              <p className="text-sm text-muted-foreground">
+                                {format(new Date(memory.createdAt), 'PPP')}
+                              </p>
+                            </div>
                           </div>
                           {isOwnProfile && (
                             <Button
