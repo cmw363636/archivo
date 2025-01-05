@@ -16,6 +16,9 @@ import AlbumManager from "../components/AlbumManager";
 import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input"; // Added import for Input component
+import { format } from "date-fns";
+import type { Memory } from "@db/schema";
 
 interface ProfileUser {
   id: number;
@@ -37,6 +40,9 @@ export default function ProfilePage() {
   const queryClient = useQueryClient();
   const [isEditingStory, setIsEditingStory] = useState(false);
   const [storyDraft, setStoryDraft] = useState('');
+  const [isAddingMemory, setIsAddingMemory] = useState(false); // Added state for memory management
+  const [memoryTitle, setMemoryTitle] = useState("");       // Added state for memory management
+  const [memoryContent, setMemoryContent] = useState("");   // Added state for memory management
 
   const userId = params.id ? parseInt(params.id) : user?.id;
   const isOwnProfile = userId === user?.id;
@@ -46,7 +52,6 @@ export default function ProfilePage() {
     enabled: !!userId && !isOwnProfile,
   });
 
-  // Use profile user data if viewing someone else's profile, otherwise use logged-in user data
   const displayUser = isOwnProfile ? user : profileUser;
 
   const uploadProfilePictureMutation = useMutation({
@@ -86,7 +91,6 @@ export default function ProfilePage() {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // Check file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       toast({
         title: "Error",
@@ -96,7 +100,6 @@ export default function ProfilePage() {
       return;
     }
 
-    // Check file type
     if (!file.type.startsWith('image/')) {
       toast({
         title: "Error",
@@ -131,12 +134,52 @@ export default function ProfilePage() {
     setShowAddRelationDialog(true);
   };
 
-  // Wait for user data to load
+  const { data: memories = [] } = useQuery<Memory[]>({ // Added memories query
+    queryKey: ["/api/memories", userId],
+    enabled: !!userId,
+  });
+
+  const addMemoryMutation = useMutation({ // Added add memory mutation
+    mutationFn: async (data: { title: string; content: string }) => {
+      const response = await fetch('/api/memories', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/memories", userId] });
+      setIsAddingMemory(false);
+      setMemoryTitle("");
+      setMemoryContent("");
+      toast({
+        title: "Success",
+        description: "Memory added successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+
   if (!user || ((!displayUser || isLoadingProfile) && !isOwnProfile)) {
     return null;
   }
 
-  // Calculate age if dateOfBirth exists
   const calculateAge = (birthDate: string) => {
     const today = new Date();
     const birth = new Date(birthDate);
@@ -505,6 +548,102 @@ export default function ProfilePage() {
                         {isOwnProfile
                           ? "Share your story by clicking the edit button above..."
                           : "No story shared yet."}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>Memories</CardTitle> {/* Added Memories Card */}
+                {isOwnProfile && !isAddingMemory && (
+                  <Button onClick={() => setIsAddingMemory(true)}>
+                    Add Memory
+                  </Button>
+                )}
+                {memories.length > 3 && (
+                  <Link href={`/profile/${userId}/memories`}>
+                    <Button variant="ghost">
+                      See All
+                    </Button>
+                  </Link>
+                )}
+              </CardHeader>
+              <CardContent>
+                {isOwnProfile && isAddingMemory ? (
+                  <div className="space-y-4">
+                    <Input
+                      placeholder="Memory title..."
+                      value={memoryTitle}
+                      onChange={(e) => setMemoryTitle(e.target.value)}
+                    />
+                    <Textarea
+                      placeholder="Share your memory..."
+                      value={memoryContent}
+                      onChange={(e) => setMemoryContent(e.target.value)}
+                      className="min-h-[200px]"
+                    />
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setIsAddingMemory(false);
+                          setMemoryTitle("");
+                          setMemoryContent("");
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        onClick={() => {
+                          if (!memoryTitle.trim()) {
+                            toast({
+                              title: "Error",
+                              description: "Please enter a title for your memory",
+                              variant: "destructive",
+                            });
+                            return;
+                          }
+                          if (!memoryContent.trim()) {
+                            toast({
+                              title: "Error",
+                              description: "Please enter your memory",
+                              variant: "destructive",
+                            });
+                            return;
+                          }
+                          addMemoryMutation.mutate({
+                            title: memoryTitle.trim(),
+                            content: memoryContent.trim(),
+                          });
+                        }}
+                      >
+                        Save
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {memories.slice(0, 3).map((memory) => (
+                      <Card key={memory.id}>
+                        <CardHeader>
+                          <CardTitle>{memory.title}</CardTitle>
+                          <p className="text-sm text-muted-foreground">
+                            {format(new Date(memory.createdAt), 'PPP')}
+                          </p>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="whitespace-pre-wrap">{memory.content}</p>
+                        </CardContent>
+                      </Card>
+                    ))}
+                    {memories.length === 0 && (
+                      <p className="text-muted-foreground">
+                        {isOwnProfile
+                          ? "Share your memories by clicking the Add Memory button above..."
+                          : "No memories shared yet."}
                       </p>
                     )}
                   </div>

@@ -13,6 +13,9 @@ import {
   SheetContent,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import MemoriesPage from "./pages/MemoriesPage";
+import NotFound from "./pages/NotFound"; // Added for 404 handling
+
 
 function App() {
   const { user, isLoading } = useUser();
@@ -38,7 +41,9 @@ function App() {
       <Route path="/profile/:id" component={ProfilePage} />
       <Route path="/profile/:id/uploaded" component={UploadedMediaPage} />
       <Route path="/profile/:id/tagged" component={TaggedMediaPage} />
+      <Route path="/profile/:id/memories" component={MemoriesPage} />
       <Route path="/family" component={FamilyPage} />
+      <Route component={NotFound} /> {/*Added 404 route*/}
     </Switch>
   );
 }

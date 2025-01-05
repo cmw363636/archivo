@@ -11,15 +11,24 @@ export const users = pgTable("users", {
   email: text("email"),  // Optional email field
   dateOfBirth: timestamp("date_of_birth"),
   bio: text("bio"),
-  profilePicture: text("profile_picture"), // Field for profile picture URL
-  story: text("story"), // New field for user's story/milestones
+  profilePicture: text("profile_picture"),
+  story: text("story"),
+});
+
+export const memories = pgTable("memories", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 export const familyRelations = pgTable("family_relations", {
   id: serial("id").primaryKey(),
   fromUserId: integer("from_user_id").references(() => users.id).notNull(),
   toUserId: integer("to_user_id").references(() => users.id).notNull(),
-  relationType: text("relation_type").notNull(), // parent, child, spouse, sibling
+  relationType: text("relation_type").notNull(),
 });
 
 export const albums = pgTable("albums", {
@@ -67,6 +76,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   familyRelationsTo: many(familyRelations, { relationName: "toUser" }),
   albums: many(albums, { relationName: "createdAlbums" }),
   albumMemberships: many(albumMembers),
+  memories: many(memories),
 }));
 
 export const albumsRelations = relations(albums, ({ one, many }) => ({
@@ -123,6 +133,14 @@ export const familyRelationsRelations = relations(familyRelations, ({ one }) => 
   }),
 }));
 
+export const memoriesRelations = relations(memories, ({ one }) => ({
+  user: one(users, {
+    fields: [memories.userId],
+    references: [users.id],
+  }),
+}));
+
+
 // Schemas with custom types
 export const insertUserSchema = createInsertSchema(users, {
   dateOfBirth: z.string().optional().nullable(),
@@ -137,6 +155,9 @@ export const selectUserSchema = createSelectSchema(users, {
   story: z.string().optional(),
 });
 
+export const insertMemorySchema = createInsertSchema(memories);
+export const selectMemorySchema = createSelectSchema(memories);
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
@@ -144,3 +165,5 @@ export type MediaItem = typeof mediaItems.$inferSelect;
 export type InsertMediaItem = typeof mediaItems.$inferInsert;
 export type Album = typeof albums.$inferSelect;
 export type InsertAlbum = typeof albums.$inferInsert;
+export type Memory = typeof memories.$inferSelect;
+export type InsertMemory = typeof memories.$inferInsert;
