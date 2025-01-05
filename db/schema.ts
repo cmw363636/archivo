@@ -11,7 +11,8 @@ export const users = pgTable("users", {
   email: text("email"),  // Optional email field
   dateOfBirth: timestamp("date_of_birth"),
   bio: text("bio"),
-  profilePicture: text("profile_picture"), // New field for profile picture URL
+  profilePicture: text("profile_picture"), // Field for profile picture URL
+  story: text("story"), // New field for user's story/milestones
 });
 
 export const familyRelations = pgTable("family_relations", {
@@ -126,12 +127,14 @@ export const familyRelationsRelations = relations(familyRelations, ({ one }) => 
 export const insertUserSchema = createInsertSchema(users, {
   dateOfBirth: z.string().optional().nullable(),
   email: z.string().email("Invalid email format").optional(),
-  profilePicture: z.string().optional(), // Add profile picture to schema
+  profilePicture: z.string().optional(),
+  story: z.string().optional(),
 });
 export const selectUserSchema = createSelectSchema(users, {
   dateOfBirth: z.string().optional().nullable(),
   email: z.string().email("Invalid email format").optional(),
-  profilePicture: z.string().optional(), // Add profile picture to schema
+  profilePicture: z.string().optional(),
+  story: z.string().optional(),
 });
 
 // Types

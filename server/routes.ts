@@ -1092,6 +1092,26 @@ export function registerRoutes(app: Express): Server {
       res.status(500).send("Error uploading profile picture");
     }
   });
+  app.post("/api/users/story", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const { story } = req.body;
+
+    try {
+      const [updatedUser] = await db
+        .update(users)
+        .set({ story })
+        .where(eq(users.id, req.user.id))
+        .returning();
+
+      res.json(updatedUser);
+    } catch (error) {
+      console.error('Error updating user story:', error);
+      res.status(500).send("Error updating user story");
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;
