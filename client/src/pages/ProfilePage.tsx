@@ -395,10 +395,15 @@ export default function ProfilePage() {
                     )}
                     {displayUser?.dateOfBirth && (
                       <div>
-                        <h3 className="text-lg font-medium">Age</h3>
-                        <p className="text-muted-foreground">
-                          {calculateAge(displayUser.dateOfBirth)} years old
-                        </p>
+                        <h3 className="text-lg font-medium">Birthday & Age</h3>
+                        <div className="text-muted-foreground">
+                          <p>
+                            {format(new Date(displayUser.dateOfBirth), 'MMMM d, yyyy')}
+                          </p>
+                          <p>
+                            {calculateAge(displayUser.dateOfBirth)} years old
+                          </p>
+                        </div>
                       </div>
                     )}
                     {isOwnProfile && (
