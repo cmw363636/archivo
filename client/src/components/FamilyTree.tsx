@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,6 +23,8 @@ const SVG_WIDTH = 2400;
 const SVG_HEIGHT = 1600;
 const CENTER_X = SVG_WIDTH / 2;
 const CENTER_Y = SVG_HEIGHT / 2;
+const VIEWPORT_WIDTH = 800; // Typical viewport width
+const VIEWPORT_HEIGHT = 600; // Typical viewport height
 
 type FamilyMember = {
   id: number;
@@ -91,6 +93,14 @@ function FamilyTree({ onUserClick, rootUserId }: FamilyTreeProps) {
       password: "",
     },
   });
+
+  // Initialize position to center on the root user
+  useEffect(() => {
+    // Calculate the offset needed to center the viewport on the root user
+    const initialX = -(CENTER_X - VIEWPORT_WIDTH / 2);
+    const initialY = -(CENTER_Y - VIEWPORT_HEIGHT / 2);
+    setPosition({ x: initialX, y: initialY });
+  }, [currentUserId]); // Reset position when the root user changes
 
   // Query to get the root user's information
   const { data: rootUser } = useQuery<FamilyMember>({
@@ -387,7 +397,7 @@ function FamilyTree({ onUserClick, rootUserId }: FamilyTreeProps) {
           )}
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="relative w-full overflow-hidden border rounded-lg">
+          <div className="relative w-full overflow-hidden border rounded-lg" style={{ height: '600px' }}>
             {/* SVG Family Tree */}
             <svg
               width={SVG_WIDTH}
