@@ -225,13 +225,20 @@ export function registerRoutes(app: Express): Server {
               )
             : eq(mediaItems.userId, userId),
           with: {
-            tags: true,
+            user: {
+              columns: {
+                username: true,
+                displayName: true
+              }
+            }
           },
+          orderBy: [desc(mediaItems.createdAt)]
         });
 
         return res.json(userMedia);
       }
 
+      // For non-uploadedOnly requests, return both uploaded and tagged media
       const userMedia = await db.query.mediaItems.findMany({
         where: albumId
           ? and(
@@ -240,8 +247,14 @@ export function registerRoutes(app: Express): Server {
             )
           : eq(mediaItems.userId, userId),
         with: {
-          tags: true,
+          user: {
+            columns: {
+              username: true,
+              displayName: true
+            }
+          }
         },
+        orderBy: [desc(mediaItems.createdAt)]
       });
 
       const taggedMedia = await db.query.mediaTags.findMany({
@@ -250,7 +263,12 @@ export function registerRoutes(app: Express): Server {
           mediaItem: {
             with: {
               tags: true,
-              user: true,
+              user: {
+                columns: {
+                  username: true,
+                  displayName: true
+                }
+              },
             },
           },
         },

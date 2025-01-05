@@ -134,13 +134,24 @@ export default function ProfilePage() {
     uploadProfilePictureMutation.mutate(file);
   };
 
-  const { data: taggedMedia = [] } = useQuery<MediaItem[]>({
-    queryKey: ["/api/media/tagged", userId],
+  const { data: uploadedMedia = [] } = useQuery<MediaItem[]>({
+    queryKey: ["/api/media", userId, "uploaded"],
+    queryFn: async () => {
+      const response = await fetch(`/api/media?userId=${userId}&uploaded=true`, {
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+
+      return response.json();
+    },
     enabled: !!userId,
   });
 
-  const { data: uploadedMedia = [] } = useQuery<MediaItem[]>({
-    queryKey: ["/api/media", userId],
+  const { data: taggedMedia = [] } = useQuery<MediaItem[]>({
+    queryKey: ["/api/media/tagged", userId],
     enabled: !!userId,
   });
 
