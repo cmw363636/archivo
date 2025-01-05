@@ -23,12 +23,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { useUser } from "../hooks/use-user";
 import { useToast } from "@/hooks/use-toast";
 import { Trash2, Calendar as CalendarIcon } from "lucide-react";
@@ -49,7 +43,6 @@ import * as z from "zod";
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
-
 type FamilyMember = {
   id: number;
   username: string;
@@ -67,6 +60,7 @@ type FamilyRelation = {
 
 type FamilyTreeProps = {
   onUserClick?: (userId: number) => void;
+  rootUserId?: number; // New prop to specify which user's tree to display
 };
 
 const relationTypeMap = {
@@ -89,7 +83,7 @@ const newUserSchema = z.object({
 
 type NewUserFormData = z.infer<typeof newUserSchema>;
 
-function FamilyTree({ onUserClick }: FamilyTreeProps) {
+function FamilyTree({ onUserClick, rootUserId }: FamilyTreeProps) {
   const { user } = useUser();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -103,6 +97,9 @@ function FamilyTree({ onUserClick }: FamilyTreeProps) {
   const [isCreatingUser, setIsCreatingUser] = useState(false);
   const [isAddingRelation, setIsAddingRelation] = useState(false);
 
+  // Use rootUserId if provided, otherwise fall back to logged-in user's ID
+  const currentUserId = rootUserId ?? user?.id;
+
   const form = useForm<NewUserFormData>({
     resolver: zodResolver(newUserSchema),
     defaultValues: {
@@ -113,9 +110,10 @@ function FamilyTree({ onUserClick }: FamilyTreeProps) {
     },
   });
 
+  // Updated query to fetch relations for the specified user
   const { data: relations = [], isLoading } = useQuery<FamilyRelation[]>({
-    queryKey: ["/api/family"],
-    enabled: !!user,
+    queryKey: ["/api/family", currentUserId],
+    enabled: !!currentUserId,
   });
 
   const { data: allUsers = [] } = useQuery<FamilyMember[]>({
@@ -193,7 +191,7 @@ function FamilyTree({ onUserClick }: FamilyTreeProps) {
     try {
       await deleteMutation.mutateAsync(relationId);
     } catch (error) {
-
+      // Error handling is done in mutation callbacks
     }
   };
 
@@ -297,62 +295,6 @@ function FamilyTree({ onUserClick }: FamilyTreeProps) {
     });
   };
 
-  const getRelationship = (hoveredMemberId: number) => {
-    if (!user) return null;
-
-    const relation = relations.find(r =>
-      (r.fromUserId === user.id && r.toUserId === hoveredMemberId) ||
-      (r.fromUserId === hoveredMemberId && r.toUserId === user.id)
-    );
-
-    if (!relation) return null;
-
-    if (relation.fromUserId === user.id) {
-      return relation.relationType === 'spouse'
-        ? 'Your spouse'
-        : `Your ${relation.relationType}`;
-    } else {
-      const inverseRelation = relationTypeMap[relation.relationType];
-      return inverseRelation === 'spouse'
-        ? 'Your spouse'
-        : `Your ${inverseRelation}`;
-    }
-  };
-
-  const handleMouseDown = (event: React.MouseEvent) => {
-    if (event.button !== 0) return;
-    setIsDragging(true);
-    setDragStart({
-      x: event.clientX - position.x,
-      y: event.clientY - position.y
-    });
-  };
-
-  const handleMouseMove = (event: React.MouseEvent) => {
-    if (!isDragging) return;
-    const newX = event.clientX - dragStart.x;
-    const newY = event.clientY - dragStart.y;
-    setPosition({ x: newX, y: newY });
-  };
-
-  const handleMouseUp = () => {
-    setIsDragging(false);
-  };
-
-  const handleMouseLeave = () => {
-    setIsDragging(false);
-  };
-
-  const handleNodeClick = (event: React.MouseEvent, userId: number) => {
-    event.stopPropagation();
-    event.preventDefault();
-    if (!isDragging && onUserClick) {
-      onUserClick(userId);
-    } else if (!isDragging) {
-      navigate(`/profile/${userId}`);
-    }
-  };
-
   const getParentOfParent = (parentId: number): FamilyMember | undefined => {
     const parentRelations = relations.filter(r =>
       (r.fromUserId === parentId && r.relationType === 'child') ||
@@ -362,7 +304,7 @@ function FamilyTree({ onUserClick }: FamilyTreeProps) {
     for (const relation of parentRelations) {
       const potentialGrandparent = relation.fromUserId === parentId ? relation.toUser : relation.fromUser;
       // Skip if this is the current user
-      if (potentialGrandparent.id === user.id) continue;
+      if (potentialGrandparent.id === currentUserId) continue;
       return potentialGrandparent;
     }
     return undefined;
@@ -622,12 +564,8 @@ function FamilyTree({ onUserClick }: FamilyTreeProps) {
             </text>
           </g>
         );
-
-
       });
     }
-
-
 
     return (
       <svg
@@ -645,9 +583,9 @@ function FamilyTree({ onUserClick }: FamilyTreeProps) {
           {memberNodes}
           {/* Center user node */}
           <g
-            key={user.id}
+            key={user?.id}
             transform={`translate(${centerX},${centerY})`}
-            onClick={(e) => handleNodeClick(e, user.id)}
+            onClick={(e) => handleNodeClick(e, user?.id)}
             style={{ cursor: 'pointer' }}
           >
             <circle
@@ -662,7 +600,7 @@ function FamilyTree({ onUserClick }: FamilyTreeProps) {
               className="text-sm font-medium"
               pointerEvents="none"
             >
-              {user.displayName || user.username}
+              {user?.displayName || user?.username}
             </text>
           </g>
         </g>
@@ -670,7 +608,42 @@ function FamilyTree({ onUserClick }: FamilyTreeProps) {
     );
   };
 
-  if (!user) {
+  const handleMouseDown = (event: React.MouseEvent) => {
+    if (event.button !== 0) return;
+    setIsDragging(true);
+    setDragStart({
+      x: event.clientX - position.x,
+      y: event.clientY - position.y
+    });
+  };
+
+  const handleMouseMove = (event: React.MouseEvent) => {
+    if (!isDragging) return;
+    const newX = event.clientX - dragStart.x;
+    const newY = event.clientY - dragStart.y;
+    setPosition({ x: newX, y: newY });
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  const handleMouseLeave = () => {
+    setIsDragging(false);
+  };
+
+  const handleNodeClick = (event: React.MouseEvent, userId: number) => {
+    event.stopPropagation();
+    event.preventDefault();
+    if (!isDragging && onUserClick) {
+      onUserClick(userId);
+    } else if (!isDragging) {
+      navigate(`/profile/${userId}`);
+    }
+  };
+
+
+  if (!currentUserId) {
     return null;
   }
 
@@ -682,8 +655,9 @@ function FamilyTree({ onUserClick }: FamilyTreeProps) {
     );
   }
 
+  // Update family groups to use currentUserId instead of user.id
   const familyGroups = relations.reduce((acc, relation) => {
-    const isFromUser = relation.fromUserId === user.id;
+    const isFromUser = relation.fromUserId === currentUserId;
     const member = isFromUser ? relation.toUser : relation.fromUser;
     const relationType = isFromUser
       ? relation.relationType
@@ -700,6 +674,8 @@ function FamilyTree({ onUserClick }: FamilyTreeProps) {
     return acc;
   }, {} as Record<string, FamilyMember[]>);
 
+  // Only show the add relation button if viewing own tree
+  const isOwnTree = currentUserId === user?.id;
 
   return (
     <div className="space-y-4">
@@ -708,281 +684,288 @@ function FamilyTree({ onUserClick }: FamilyTreeProps) {
           <div>
             <CardTitle>Family Tree</CardTitle>
             <CardDescription>
-              Visualizing your family connections
+              Visualizing family connections
             </CardDescription>
           </div>
-          <Button onClick={() => setIsAddingRelation(true)}>
-            Add Relation
-          </Button>
+          {isOwnTree && (
+            <Button onClick={() => setIsAddingRelation(true)}>
+              Add Relation
+            </Button>
+          )}
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="relative w-full overflow-hidden border rounded-lg">
             {renderTreeSvg()}
           </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Your Family Relationships</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ul className="space-y-2">
-                {relations.map((relation) => {
-                  const isFromUser = relation.fromUserId === user?.id;
-                  const relatedUser = isFromUser ? relation.toUser : relation.fromUser;
-                  const displayType = isFromUser
-                    ? relation.relationType
-                    : relationTypeMap[relation.relationType];
+          {isOwnTree && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Your Family Relationships</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-2">
+                  {relations.map((relation) => {
+                    const isFromUser = relation.fromUserId === currentUserId;
+                    const relatedUser = isFromUser ? relation.toUser : relation.fromUser;
+                    const displayType = isFromUser
+                      ? relation.relationType
+                      : relationTypeMap[relation.relationType];
 
-                  return (
-                    <li key={relation.id} className="flex items-center justify-between">
-                      <span className="text-sm">
-                        <Link href={`/profile/${relatedUser.id}`} className="font-medium hover:underline">
-                          {relatedUser.displayName || relatedUser.username}
-                        </Link>
-                        {' is your '}
-                        <span className="font-medium">{displayType}</span>
-                      </span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDeleteRelation(relation.id)}
-                        className="h-8 w-8 p-0"
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </li>
-                  );
-                })}
-              </ul>
-            </CardContent>
-          </Card>
+                    return (
+                      <li key={relation.id} className="flex items-center justify-between">
+                        <span className="text-sm">
+                          <Link href={`/profile/${relatedUser.id}`} className="font-medium hover:underline">
+                            {relatedUser.displayName || relatedUser.username}
+                          </Link>
+                          {' is your '}
+                          <span className="font-medium">{displayType}</span>
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteRelation(relation.id)}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </CardContent>
+            </Card>
+          )}
         </CardContent>
       </Card>
 
-      <Dialog
-        open={isAddingRelation}
-        onOpenChange={(open) => {
-          setIsAddingRelation(open);
-          if (!open) {
-            setSelectedRelativeMemberId("");
-            setRelationType("");
-            setIsCreatingUser(false);
-            form.reset();
-          }
-        }}
-      >
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Add Family Relation</DialogTitle>
-            <DialogDescription>
-              Select an existing family member or create a new one
-            </DialogDescription>
-          </DialogHeader>
+      {/* Add Relation Dialog */}
+      {isOwnTree && (
+        <Dialog
+          open={isAddingRelation}
+          onOpenChange={(open) => {
+            setIsAddingRelation(open);
+            if (!open) {
+              setSelectedRelativeMemberId("");
+              setRelationType("");
+              setIsCreatingUser(false);
+              form.reset();
+            }
+          }}
+        >
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Add Family Relation</DialogTitle>
+              <DialogDescription>
+                Select an existing family member or create a new one
+              </DialogDescription>
+            </DialogHeader>
 
-          <div className="grid gap-4 py-4">
-            <div className="flex items-center gap-4">
-              <Button
-                type="button"
-                variant={!isCreatingUser ? "default" : "outline"}
-                onClick={() => setIsCreatingUser(false)}
-                className="flex-1"
-              >
-                Existing Member
-              </Button>
-              <Button
-                type="button"
-                variant={isCreatingUser ? "default" : "outline"}
-                onClick={() => setIsCreatingUser(true)}
-                className="flex-1"
-              >
-                New Member
-              </Button>
-            </div>
-
-            {isCreatingUser ? (
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(handleAddRelation)} className="space-y-4">
-                  <FormField
-                    control={form.control}
-                    name="username"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Username</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="displayName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Display Name</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="email"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Email (Optional)</FormLabel>
-                        <FormControl>
-                          <Input type="email" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="password"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Password</FormLabel>
-                        <FormControl>
-                          <Input type="password" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="birthday"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-col">
-                        <FormLabel>Birthday (Optional)</FormLabel>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button
-                                variant={"outline"}
-                                className={cn(
-                                  "w-full pl-3 text-left font-normal",
-                                  !field.value && "text-muted-foreground"
-                                )}
-                              >
-                                {field.value ? (
-                                  format(field.value, "PPP")
-                                ) : (
-                                  <span>Pick a date</span>
-                                )}
-                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              selected={field.value}
-                              onSelect={field.onChange}
-                              disabled={(date) =>
-                                date > new Date() || date < new Date("1900-01-01")
-                              }
-                              initialFocus
-                            />
-                          </PopoverContent>
-                        </Popover>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="relationType"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Relation Type</FormLabel>
-                        <Select
-                          value={field.value}
-                          onValueChange={field.onChange}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select relation type" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="parent">Parent</SelectItem>
-                            <SelectItem value="child">Child</SelectItem>
-                            <SelectItem value="sibling">Sibling</SelectItem>
-                            <SelectItem value="spouse">Spouse</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <Button type="submit" className="w-full">
-                    Create Member
-                  </Button>
-                </form>
-              </Form>
-            ) : (
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Select Member</label>
-                  <Select
-                    value={selectedRelativeMemberId}
-                    onValueChange={setSelectedRelativeMemberId}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a family member" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {allUsers
-                        .filter((u) => u.id !== user?.id)
-                        .map((user) => (
-                          <SelectItem key={user.id} value={user.id.toString()}>
-                            {user.displayName || user.username}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Relation Type</label>
-                  <Select
-                    value={relationType}
-                    onValueChange={setRelationType}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select relation type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="parent">Parent</SelectItem>
-                      <SelectItem value="child">Child</SelectItem>
-                      <SelectItem value="sibling">Sibling</SelectItem>
-                      <SelectItem value="spouse">Spouse</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
+            <div className="grid gap-4 py-4">
+              <div className="flex items-center gap-4">
                 <Button
-                  className="w-full"
-                  disabled={!selectedRelativeMemberId || !relationType}
-                  onClick={handleAddRelation}
+                  type="button"
+                  variant={!isCreatingUser ? "default" : "outline"}
+                  onClick={() => setIsCreatingUser(false)}
+                  className="flex-1"
                 >
-                  Add Relation
+                  Existing Member
+                </Button>
+                <Button
+                  type="button"
+                  variant={isCreatingUser ? "default" : "outline"}
+                  onClick={() => setIsCreatingUser(true)}
+                  className="flex-1"
+                >
+                  New Member
                 </Button>
               </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
+
+              {isCreatingUser ? (
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(handleAddRelation)} className="space-y-4">
+                    <FormField
+                      control={form.control}
+                      name="username"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Username</FormLabel>
+                          <FormControl>
+                            <Input {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="displayName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Display Name</FormLabel>
+                          <FormControl>
+                            <Input {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="email"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Email (Optional)</FormLabel>
+                          <FormControl>
+                            <Input type="email" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="password"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Password</FormLabel>
+                          <FormControl>
+                            <Input type="password" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="birthday"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-col">
+                          <FormLabel>Birthday (Optional)</FormLabel>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <FormControl>
+                                <Button
+                                  variant={"outline"}
+                                  className={cn(
+                                    "w-full pl-3 text-left font-normal",
+                                    !field.value && "text-muted-foreground"
+                                  )}
+                                >
+                                  {field.value ? (
+                                    format(field.value, "PPP")
+                                  ) : (
+                                    <span>Pick a date</span>
+                                  )}
+                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                </Button>
+                              </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={field.value}
+                                onSelect={field.onChange}
+                                disabled={(date) =>
+                                  date > new Date() || date < new Date("1900-01-01")
+                                }
+                                initialFocus
+                              />
+                            </PopoverContent>
+                          </Popover>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="relationType"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Relation Type</FormLabel>
+                          <Select
+                            value={field.value}
+                            onValueChange={field.onChange}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select relation type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="parent">Parent</SelectItem>
+                              <SelectItem value="child">Child</SelectItem>
+                              <SelectItem value="sibling">Sibling</SelectItem>
+                              <SelectItem value="spouse">Spouse</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <Button type="submit" className="w-full">
+                      Create Member
+                    </Button>
+                  </form>
+                </Form>
+              ) : (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Select Member</label>
+                    <Select
+                      value={selectedRelativeMemberId}
+                      onValueChange={setSelectedRelativeMemberId}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a family member" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {allUsers
+                          .filter((u) => u.id !== user?.id)
+                          .map((user) => (
+                            <SelectItem key={user.id} value={user.id.toString()}>
+                              {user.displayName || user.username}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Relation Type</label>
+                    <Select
+                      value={relationType}
+                      onValueChange={setRelationType}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select relation type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="parent">Parent</SelectItem>
+                        <SelectItem value="child">Child</SelectItem>
+                        <SelectItem value="sibling">Sibling</SelectItem>
+                        <SelectItem value="spouse">Spouse</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <Button
+                    className="w-full"
+                    disabled={!selectedRelativeMemberId || !relationType}
+                    onClick={handleAddRelation}
+                  >
+                    Add Relation
+                  </Button>
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

@@ -132,6 +132,7 @@ export default function ProfilePage() {
           </Button>
         )}
         <div className="grid gap-8 md:grid-cols-2">
+          {/* Profile Card */}
           <Card>
             <CardHeader>
               <CardTitle>Profile</CardTitle>
@@ -172,6 +173,7 @@ export default function ProfilePage() {
             </CardContent>
           </Card>
 
+          {/* Family Relations Card */}
           {!isOwnProfile && (
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
@@ -203,6 +205,7 @@ export default function ProfilePage() {
             </Card>
           )}
 
+          {/* Media Cards */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Uploaded Media</CardTitle>
@@ -256,6 +259,7 @@ export default function ProfilePage() {
             </CardContent>
           </Card>
 
+          {/* Tagged Media Card */}
           <Card className="md:col-span-2">
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Tagged Media</CardTitle>
@@ -304,6 +308,25 @@ export default function ProfilePage() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Family Tree Section */}
+        <Card className="mt-8">
+          <CardHeader>
+            <CardTitle>
+              {isOwnProfile ? "Your Family Tree" : `${displayUser.displayName || displayUser.username}'s Family Tree`}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <FamilyTree
+                onUserClick={(clickedUserId) => {
+                  setLocation(`/profile/${clickedUserId}`);
+                }}
+                rootUserId={userId}
+              />
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   };
