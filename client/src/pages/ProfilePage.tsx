@@ -28,12 +28,7 @@ interface ProfileUser {
   username: string;
   displayName?: string;
   email?: string;
-}
-
-interface FamilyRelation {
-  id: number;
-  relationType: string;
-  toUser: ProfileUser;
+  dateOfBirth?: string;
 }
 
 export default function ProfilePage() {
@@ -81,11 +76,6 @@ export default function ProfilePage() {
     enabled: !!userId,
   });
 
-  const { data: familyRelations = [] } = useQuery<FamilyRelation[]>({
-    queryKey: ["/api/family", userId],
-    enabled: !!userId && !isOwnProfile,
-  });
-
   const handleLogout = async () => {
     try {
       await logout();
@@ -118,6 +108,18 @@ export default function ProfilePage() {
         />
       );
     }
+
+    // Calculate age if dateOfBirth exists
+    const calculateAge = (birthDate: string) => {
+      const today = new Date();
+      const birth = new Date(birthDate);
+      let age = today.getFullYear() - birth.getFullYear();
+      const m = today.getMonth() - birth.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+        age--;
+      }
+      return age;
+    };
 
     return (
       <div className="space-y-8">
@@ -155,6 +157,14 @@ export default function ProfilePage() {
                     <p className="text-muted-foreground">{displayUser.email}</p>
                   </div>
                 )}
+                {displayUser.dateOfBirth && (
+                  <div>
+                    <h3 className="text-lg font-medium">Age</h3>
+                    <p className="text-muted-foreground">
+                      {calculateAge(displayUser.dateOfBirth)} years old
+                    </p>
+                  </div>
+                )}
                 {isOwnProfile && (
                   <UserProfileEditor />
                 )}
@@ -173,39 +183,7 @@ export default function ProfilePage() {
             </CardContent>
           </Card>
 
-          {/* Family Relations Card */}
-          {!isOwnProfile && (
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>Family Relations</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {familyRelations.length > 0 ? (
-                    familyRelations.map((relation) => (
-                      <div
-                        key={relation.id}
-                        className="flex items-center justify-between p-2 rounded-lg hover:bg-accent"
-                      >
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">
-                            {relation.relationType}
-                          </span>
-                          <span className="text-muted-foreground">
-                            {relation.toUser?.displayName || relation.toUser?.username}
-                          </span>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-muted-foreground">No family relations</p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Media Cards */}
+          {/* Uploaded Media Card */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Uploaded Media</CardTitle>
@@ -308,6 +286,37 @@ export default function ProfilePage() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Family Relations Card */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>Family Relations</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              { /*Family Relations are now always displayed*/ }
+              {familyRelations.length > 0 ? (
+                familyRelations.map((relation) => (
+                  <div
+                    key={relation.id}
+                    className="flex items-center justify-between p-2 rounded-lg hover:bg-accent"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">
+                        {relation.relationType}
+                      </span>
+                      <span className="text-muted-foreground">
+                        {relation.toUser?.displayName || relation.toUser?.username}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-muted-foreground">No family relations</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Family Tree Section */}
         <Card className="mt-8">
