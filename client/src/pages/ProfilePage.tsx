@@ -4,18 +4,9 @@ import { useUser } from "../hooks/use-user";
 import FamilyTree from "../components/FamilyTree";
 import { useQuery } from "@tanstack/react-query";
 import { AddFamilyMemberDialog } from "../components/AddFamilyMemberDialog";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import {
-  Sheet,
-  SheetContent,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Link, useParams, useLocation } from "wouter";
 import { Menu, Link2, ArrowLeft, UserPlus2 } from "lucide-react";
 import type { MediaItem } from "@db/schema";
@@ -41,38 +32,21 @@ export default function ProfilePage() {
   const userId = params.id ? parseInt(params.id) : user?.id;
   const isOwnProfile = userId === user?.id;
 
-  const { data: profileUser } = useQuery<ProfileUser>({
+  const { data: profileUser, isLoading: isLoadingProfile } = useQuery<ProfileUser>({
     queryKey: ["/api/users", userId],
     enabled: !!userId && !isOwnProfile,
   });
 
+  // Use profile user data if viewing someone else's profile, otherwise use logged-in user data
   const displayUser = isOwnProfile ? user : profileUser;
 
   const { data: taggedMedia = [] } = useQuery<MediaItem[]>({
     queryKey: ["/api/media/tagged", userId],
-    queryFn: async () => {
-      const response = await fetch(`/api/media/tagged?userId=${userId}`, {
-        credentials: 'include'
-      });
-      if (!response.ok) {
-        throw new Error('Failed to fetch tagged media');
-      }
-      return response.json();
-    },
     enabled: !!userId,
   });
 
   const { data: uploadedMedia = [] } = useQuery<MediaItem[]>({
     queryKey: ["/api/media", userId],
-    queryFn: async () => {
-      const response = await fetch(`/api/media?userId=${userId}&uploaded=true`, {
-        credentials: 'include'
-      });
-      if (!response.ok) {
-        throw new Error('Failed to fetch uploaded media');
-      }
-      return response.json();
-    },
     enabled: !!userId,
   });
 
@@ -88,7 +62,8 @@ export default function ProfilePage() {
     setShowAddRelationDialog(true);
   };
 
-  if (!user || !displayUser) {
+  // Wait for user data to load
+  if (!user || ((!displayUser || isLoadingProfile) && !isOwnProfile)) {
     return null;
   }
 
@@ -144,20 +119,20 @@ export default function ProfilePage() {
                 <div>
                   <h3 className="text-lg font-medium">Display Name</h3>
                   <p className="text-muted-foreground">
-                    {displayUser.displayName || displayUser.username}
+                    {displayUser?.displayName || displayUser?.username}
                   </p>
                 </div>
                 <div>
                   <h3 className="text-lg font-medium">Username</h3>
-                  <p className="text-muted-foreground">{displayUser.username}</p>
+                  <p className="text-muted-foreground">{displayUser?.username}</p>
                 </div>
-                {displayUser.email && (
+                {displayUser?.email && (
                   <div>
                     <h3 className="text-lg font-medium">Email</h3>
                     <p className="text-muted-foreground">{displayUser.email}</p>
                   </div>
                 )}
-                {displayUser.dateOfBirth && (
+                {displayUser?.dateOfBirth && (
                   <div>
                     <h3 className="text-lg font-medium">Age</h3>
                     <p className="text-muted-foreground">
@@ -291,7 +266,9 @@ export default function ProfilePage() {
         <Card className="mt-8">
           <CardHeader>
             <CardTitle>
-              {isOwnProfile ? "Your Family Tree" : `${displayUser.displayName || displayUser.username}'s Family Tree`}
+              {isOwnProfile 
+                ? "Your Family Tree" 
+                : `${displayUser?.displayName || displayUser?.username}'s Family Tree`}
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
