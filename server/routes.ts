@@ -494,6 +494,39 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  app.get("/api/users/:userId", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    const userId = parseInt(req.params.userId);
+
+    try {
+      const [user] = await db
+        .select({
+          id: users.id,
+          username: users.username,
+          displayName: users.displayName,
+          email: users.email,
+          dateOfBirth: users.dateOfBirth,
+          profilePicture: users.profilePicture,
+          story: users.story,
+        })
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+
+      if (!user) {
+        return res.status(404).send("User not found");
+      }
+
+      res.json(user);
+    } catch (error) {
+      console.error('Error fetching user:', error);
+      res.status(500).send("Error fetching user");
+    }
+  });
+
   app.get("/api/albums", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Not authenticated");

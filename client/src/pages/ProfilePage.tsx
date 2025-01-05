@@ -60,6 +60,17 @@ export default function ProfilePage() {
 
   const { data: profileUser, isLoading: isLoadingProfile } = useQuery<ProfileUser>({
     queryKey: ["/api/users", userId],
+    queryFn: async () => {
+      const response = await fetch(`/api/users/${userId}`, {
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+
+      return response.json();
+    },
     enabled: !!userId && !isOwnProfile,
   });
 
