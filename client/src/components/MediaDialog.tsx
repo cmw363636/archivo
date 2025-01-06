@@ -10,7 +10,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState, useEffect } from "react";
-import React from 'react';
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -219,6 +218,12 @@ export function MediaDialog({ media, open, onOpenChange }: MediaDialogProps) {
   // Get the current album if media is in one
   const currentAlbum = albums.find(album => album.id === media?.albumId);
 
+  // Get tagged users for the media item
+  const { data: taggedUsers = [] } = useQuery({
+    queryKey: ['/api/media/tags', media?.id],
+    enabled: !!media?.id,
+  });
+
   if (!media) return null;
 
   return (
@@ -352,6 +357,20 @@ export function MediaDialog({ media, open, onOpenChange }: MediaDialogProps) {
               />
             )}
             <div className="mt-4">
+              <div className="space-y-2 border-b pb-4 mb-4">
+                <div className="text-sm">
+                  <span className="text-muted-foreground">Uploaded by: </span>
+                  <span className="font-medium">{media?.user?.displayName || media?.user?.username}</span>
+                </div>
+                {taggedUsers.length > 0 && (
+                  <div className="text-sm">
+                    <span className="text-muted-foreground">Tagged users: </span>
+                    <span className="font-medium">
+                      {taggedUsers.map((tag: any) => tag.user?.displayName || tag.user?.username).join(', ')}
+                    </span>
+                  </div>
+                )}
+              </div>
               {!isEditMode && (
                 <>
                   {media.description && (
