@@ -21,6 +21,17 @@ interface MediaDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
+interface TaggedUser {
+  id: number;
+  mediaId: number;
+  userId: number;
+  user: {
+    id: number;
+    username: string;
+    displayName?: string;
+  };
+}
+
 export function MediaDialog({ media, open, onOpenChange }: MediaDialogProps) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -34,6 +45,12 @@ export function MediaDialog({ media, open, onOpenChange }: MediaDialogProps) {
 
   const { data: albums = [] } = useQuery<any[]>({
     queryKey: ["/api/albums"],
+  });
+
+  // Get tagged users for the media item
+  const { data: taggedUsers = [] } = useQuery<TaggedUser[]>({
+    queryKey: ['/api/media/tags', media?.id],
+    enabled: !!media?.id,
   });
 
   // Reset edit form when media changes
@@ -218,18 +235,13 @@ export function MediaDialog({ media, open, onOpenChange }: MediaDialogProps) {
   // Get the current album if media is in one
   const currentAlbum = albums.find(album => album.id === media?.albumId);
 
-  // Get tagged users for the media item
-  const { data: taggedUsers = [] } = useQuery({
-    queryKey: ['/api/media/tags', media?.id],
-    enabled: !!media?.id,
-  });
 
   if (!media) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl">
-        <DialogHeader className="mb-4">
+        <DialogHeader>
           <div className="flex items-center justify-between pr-12">
             {isEditMode ? (
               <div className="flex-1 mr-4">
@@ -280,8 +292,8 @@ export function MediaDialog({ media, open, onOpenChange }: MediaDialogProps) {
             ) : (
               <>
                 <div className="flex-1">
-                  <DialogTitle>{media?.title}</DialogTitle>
-                  {media?.mediaDate && (
+                  <DialogTitle>{media.title}</DialogTitle>
+                  {media.mediaDate && (
                     <div className="text-sm text-muted-foreground mt-1">
                       {format(new Date(media.mediaDate), "PPP")}
                     </div>
@@ -330,8 +342,8 @@ export function MediaDialog({ media, open, onOpenChange }: MediaDialogProps) {
           <CardContent className="p-6">
             {media.type === "photo" && (
               <img
-                src={media.url}
-                alt={media.title}
+                src={media.url || ''}
+                alt={media.title || ''}
                 className="w-full rounded-lg object-cover max-h-[70vh]"
               />
             )}
@@ -351,27 +363,34 @@ export function MediaDialog({ media, open, onOpenChange }: MediaDialogProps) {
             )}
             {media.type === "post" && media.url && (
               <img
-                src={media.url}
-                alt={media.title}
+                src={media.url || ''}
+                alt={media.title || ''}
                 className="w-full rounded-lg object-cover max-h-[70vh]"
               />
             )}
-            <div className="mt-4">
-              {/* Tagged Users Section */}
-              {taggedUsers.length > 0 && (
-                <div className="mt-4 p-3 bg-muted rounded-lg mb-4">
-                  <div className="text-sm">
-                    <span className="text-muted-foreground">Tagged Users: </span>
-                    <span className="font-medium">
-                      {taggedUsers.map((tag: any) => tag.user?.displayName || tag.user?.username).join(', ')}
-                    </span>
+
+            <div className="mt-4 space-y-4">
+              {/* User Information Section */}
+              <div className="p-3 bg-muted rounded-lg">
+                <div className="text-sm">
+                  <div className="mb-2">
+                    <span className="text-muted-foreground">Uploaded by: </span>
+                    <span className="font-medium">{media.user?.displayName || media.user?.username}</span>
                   </div>
+                  {taggedUsers.length > 0 && (
+                    <div>
+                      <span className="text-muted-foreground">Tagged users: </span>
+                      <span className="font-medium">
+                        {taggedUsers.map(tag => tag.user?.displayName || tag.user?.username).join(', ')}
+                      </span>
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
 
               {/* Current Album Section */}
               {currentAlbum && (
-                <div className="mt-4 p-3 bg-muted rounded-lg">
+                <div className="p-3 bg-muted rounded-lg">
                   <div className="flex items-center justify-between">
                     <div className="text-sm">
                       <span className="text-muted-foreground">Current Album: </span>
@@ -388,26 +407,28 @@ export function MediaDialog({ media, open, onOpenChange }: MediaDialogProps) {
                   </div>
                 </div>
               )}
+
+              {/* Media Description and Content */}
+              {media.description && (
+                <p className="text-muted-foreground">{media.description}</p>
+              )}
+              {media.type === "post" && media.website_url && (
+                <div className="flex items-center gap-1 text-sm text-primary">
+                  <Link2 className="h-3 w-3" />
+                  <a
+                    href={media.website_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:underline"
+                  >
+                    Visit Website
+                  </a>
+                </div>
+              )}
+              {media.type === "post" && media.content && (
+                <p className="whitespace-pre-wrap">{media.content}</p>
+              )}
             </div>
-            {media.description && (
-              <p className="mt-2 text-muted-foreground">{media.description}</p>
-            )}
-            {media.type === "post" && media.website_url && (
-              <div className="mt-1 flex items-center gap-1 text-sm text-primary">
-                <Link2 className="h-3 w-3" />
-                <a
-                  href={media.website_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:underline"
-                >
-                  Visit Website
-                </a>
-              </div>
-            )}
-            {media.type === "post" && media.content && (
-              <p className="mt-4 whitespace-pre-wrap">{media.content}</p>
-            )}
           </CardContent>
         </Card>
 
