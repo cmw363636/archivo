@@ -357,42 +357,16 @@ export function MediaDialog({ media, open, onOpenChange }: MediaDialogProps) {
               />
             )}
             <div className="mt-4">
-              <div className="space-y-2 border-b pb-4 mb-4">
-                <div className="text-sm">
-                  <span className="text-muted-foreground">Uploaded by: </span>
-                  <span className="font-medium">{media?.user?.displayName || media?.user?.username}</span>
-                </div>
-                {taggedUsers.length > 0 && (
+              {/* Tagged Users Section */}
+              {taggedUsers.length > 0 && (
+                <div className="mt-4 p-3 bg-muted rounded-lg mb-4">
                   <div className="text-sm">
-                    <span className="text-muted-foreground">Tagged users: </span>
+                    <span className="text-muted-foreground">Tagged Users: </span>
                     <span className="font-medium">
                       {taggedUsers.map((tag: any) => tag.user?.displayName || tag.user?.username).join(', ')}
                     </span>
                   </div>
-                )}
-              </div>
-              {!isEditMode && (
-                <>
-                  {media.description && (
-                    <p className="mt-2 text-muted-foreground">{media.description}</p>
-                  )}
-                  {media.type === "post" && media.website_url && (
-                    <div className="mt-1 flex items-center gap-1 text-sm text-primary">
-                      <Link2 className="h-3 w-3" />
-                      <a
-                        href={media.website_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="hover:underline"
-                      >
-                        Visit Website
-                      </a>
-                    </div>
-                  )}
-                  {media.type === "post" && media.content && (
-                    <p className="mt-4 whitespace-pre-wrap">{media.content}</p>
-                  )}
-                </>
+                </div>
               )}
 
               {/* Current Album Section */}
@@ -415,6 +389,25 @@ export function MediaDialog({ media, open, onOpenChange }: MediaDialogProps) {
                 </div>
               )}
             </div>
+            {media.description && (
+              <p className="mt-2 text-muted-foreground">{media.description}</p>
+            )}
+            {media.type === "post" && media.website_url && (
+              <div className="mt-1 flex items-center gap-1 text-sm text-primary">
+                <Link2 className="h-3 w-3" />
+                <a
+                  href={media.website_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:underline"
+                >
+                  Visit Website
+                </a>
+              </div>
+            )}
+            {media.type === "post" && media.content && (
+              <p className="mt-4 whitespace-pre-wrap">{media.content}</p>
+            )}
           </CardContent>
         </Card>
 
