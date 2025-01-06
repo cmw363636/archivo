@@ -475,8 +475,13 @@ export default function ProfilePage() {
                               {media.description}
                             </p>
                             <p className="text-sm text-muted-foreground">
-                              Posted by {media.user?.displayName || media.user?.username}
+                              Uploaded by {media.user?.displayName || media.user?.username}
                             </p>
+                            {media.tags && media.tags.length > 0 && (
+                              <p className="text-sm text-muted-foreground">
+                                Tagged: {media.tags.map(tag => tag.user?.displayName || tag.user?.username).join(', ')}
+                              </p>
+                            )}
                           </div>
                           {media.type === 'post' && media.website_url && (
                             <div className="mt-1 flex items-center gap-1 text-sm text-primary">
@@ -525,9 +530,19 @@ export default function ProfilePage() {
                         )}
                         <div className="flex-1">
                           <h4 className="font-medium">{media.title}</h4>
-                          <p className="text-sm text-muted-foreground">
-                            {media.description}
-                          </p>
+                          <div className="space-y-1">
+                            <p className="text-sm text-muted-foreground">
+                              {media.description}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              Uploaded by {media.user?.displayName || media.user?.username}
+                            </p>
+                            {media.tags && media.tags.length > 0 && (
+                              <p className="text-sm text-muted-foreground">
+                                Tagged: {media.tags.map(tag => tag.user?.displayName || tag.user?.username).join(', ')}
+                              </p>
+                            )}
+                          </div>
                           {media.type === 'post' && media.website_url && (
                             <div className="mt-1 flex items-center gap-1 text-sm text-primary">
                               <Link2 className="h-3 w-3" />
