@@ -1,56 +1,15 @@
-import { Switch, Route, Link } from "wouter";
-import { Loader2, Menu } from "lucide-react";
-import { useUser } from "./hooks/use-user";
-import AuthPage from "./pages/AuthPage";
-import HomePage from "./pages/HomePage";
-import ProfilePage from "./pages/ProfilePage";
-import UploadedMediaPage from "./pages/UploadedMediaPage";
-import TaggedMediaPage from "./pages/TaggedMediaPage";
-import FamilyTree from "./components/FamilyTree";
+import AlbumManager from "../components/AlbumManager";
+import { useUser } from "../hooks/use-user";
 import { Button } from "@/components/ui/button";
+import { Link } from "wouter";
 import {
   Sheet,
   SheetContent,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import MemoriesPage from "./pages/MemoriesPage";
-import NotFound from "./pages/NotFound";
-import AlbumsPage from "./pages/AlbumsPage";
+import { Menu } from "lucide-react";
 
-function App() {
-  const { user, isLoading } = useUser();
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  // If not authenticated, show login page
-  if (!user) {
-    return <AuthPage />;
-  }
-
-  // If authenticated, show main app routes
-  return (
-    <Switch>
-      <Route path="/" component={HomePage} />
-      <Route path="/profile" component={ProfilePage} />
-      <Route path="/profile/:id" component={ProfilePage} />
-      <Route path="/profile/:id/uploaded" component={UploadedMediaPage} />
-      <Route path="/profile/:id/tagged" component={TaggedMediaPage} />
-      <Route path="/profile/:id/memories" component={MemoriesPage} />
-      <Route path="/family" component={FamilyPage} />
-      <Route path="/albums" component={AlbumsPage} />
-      <Route component={NotFound} />
-    </Switch>
-  );
-}
-
-// Wrapper component for the Family Tree page to provide consistent layout
-function FamilyPage() {
+export default function AlbumsPage() {
   const { user, logout } = useUser();
 
   const handleLogout = async () => {
@@ -62,7 +21,7 @@ function FamilyPage() {
   };
 
   return (
-    <div className="min-h-screen bg-primary/10">
+    <div className="min-h-screen bg-orange-50">
       <header className="bg-white border-b shadow-sm">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <h1 className="text-2xl font-bold text-[#7c6f9f]">Archivo</h1>
@@ -82,12 +41,12 @@ function FamilyPage() {
                     </Button>
                   </Link>
                   <Link href="/albums">
-                    <Button variant="ghost" className="w-full">
+                    <Button variant="default" className="w-full">
                       Albums
                     </Button>
                   </Link>
                   <Link href="/family">
-                    <Button variant="default" className="w-full">
+                    <Button variant="ghost" className="w-full">
                       Family Tree
                     </Button>
                   </Link>
@@ -108,10 +67,10 @@ function FamilyPage() {
                 <Button variant="ghost">Media Gallery</Button>
               </Link>
               <Link href="/albums">
-                <Button variant="ghost">Albums</Button>
+                <Button variant="default">Albums</Button>
               </Link>
               <Link href="/family">
-                <Button variant="default">Family Tree</Button>
+                <Button variant="ghost">Family Tree</Button>
               </Link>
               <Link href="/profile">
                 <Button variant="ghost">Profile</Button>
@@ -123,11 +82,10 @@ function FamilyPage() {
           </div>
         </div>
       </header>
+
       <main className="container mx-auto px-4 py-8">
-        <FamilyTree onUserClick={(userId) => window.location.href = `/profile/${userId}`} />
+        <AlbumManager />
       </main>
     </div>
   );
 }
-
-export default App;
