@@ -79,6 +79,9 @@ function FamilyTree({ onUserClick, rootUserId }: FamilyTreeProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [isCreatingUser, setIsCreatingUser] = useState(false);
   const [isAddingRelation, setIsAddingRelation] = useState(false);
+  const [touchStart, setTouchStart] = useState({ x: 0, y: 0 });
+  const [scale, setScale] = useState(1);
+  const [lastPinchDistance, setLastPinchDistance] = useState<number | null>(null);
 
   // Use rootUserId if provided, otherwise fall back to logged-in user's ID
   const currentUserId = rootUserId ?? user?.id;
@@ -356,6 +359,48 @@ function FamilyTree({ onUserClick, rootUserId }: FamilyTreeProps) {
     setIsDragging(false);
   };
 
+  const handleTouchStart = (event: React.TouchEvent) => {
+    if (event.touches.length === 1) {
+      setTouchStart({
+        x: event.touches[0].clientX - position.x,
+        y: event.touches[0].clientY - position.y
+      });
+    } else if (event.touches.length === 2) {
+      // Handle pinch start
+      const distance = Math.hypot(
+        event.touches[0].clientX - event.touches[1].clientX,
+        event.touches[0].clientY - event.touches[1].clientY
+      );
+      setLastPinchDistance(distance);
+    }
+  };
+
+  const handleTouchMove = (event: React.TouchEvent) => {
+    event.preventDefault();
+    if (event.touches.length === 1) {
+      // Handle pan
+      const newX = event.touches[0].clientX - touchStart.x;
+      const newY = event.touches[0].clientY - touchStart.y;
+      setPosition({ x: newX, y: newY });
+    } else if (event.touches.length === 2 && lastPinchDistance !== null) {
+      // Handle pinch zoom
+      const distance = Math.hypot(
+        event.touches[0].clientX - event.touches[1].clientX,
+        event.touches[0].clientY - event.touches[1].clientY
+      );
+      const delta = distance - lastPinchDistance;
+      setLastPinchDistance(distance);
+
+      // Adjust scale with constraints
+      const newScale = Math.max(0.5, Math.min(2, scale + delta * 0.01));
+      setScale(newScale);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    setLastPinchDistance(null);
+  };
+
   const handleNodeClick = (event: React.MouseEvent, userId: number | undefined) => {
     if (!userId) return;
 
@@ -397,19 +442,29 @@ function FamilyTree({ onUserClick, rootUserId }: FamilyTreeProps) {
           )}
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="relative w-full overflow-hidden border rounded-lg" style={{ height: '600px' }}>
+          <div
+            className="relative w-full overflow-hidden border rounded-lg"
+            style={{
+              height: '600px',
+              paddingTop: 'env(safe-area-inset-top)',
+              paddingBottom: 'env(safe-area-inset-bottom)'
+            }}
+          >
             {/* SVG Family Tree */}
             <svg
               width={SVG_WIDTH}
               height={SVG_HEIGHT}
-              className="max-w-full cursor-move"
+              className="max-w-full cursor-move touch-none"
               ref={svgRef}
               onMouseDown={handleMouseDown}
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
               onMouseLeave={handleMouseLeave}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
             >
-              <g transform={`translate(${position.x},${position.y})`}>
+              <g transform={`translate(${position.x},${position.y}) scale(${scale})`}>
                 {/* Render parents and their parents (grandparents) */}
                 {familyGroups.parent?.map((parent, i) => {
                   const parentOfParent = getParentOfParent(parent.id);
