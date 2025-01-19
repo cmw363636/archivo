@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Archivo</string>
+    <string name="title_activity_main">Archivo</string>
+    <string name="package_name">com.archivo.app</string>
+    <string name="custom_url_scheme">com.archivo.app</string>
+</resources>

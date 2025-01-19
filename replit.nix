@@ -1,5 +1,6 @@
 {pkgs}: {
   deps = [
+    pkgs.ruby
     pkgs.zlib
     pkgs.tk
     pkgs.tcl
