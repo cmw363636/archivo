@@ -361,6 +361,7 @@ function FamilyTree({ onUserClick, rootUserId }: FamilyTreeProps) {
 
   const handleTouchStart = (event: React.TouchEvent) => {
     if (event.touches.length === 1) {
+      event.preventDefault();
       setTouchStart({
         x: event.touches[0].clientX - position.x,
         y: event.touches[0].clientY - position.y
@@ -377,10 +378,15 @@ function FamilyTree({ onUserClick, rootUserId }: FamilyTreeProps) {
 
   const handleTouchMove = (event: React.TouchEvent) => {
     event.preventDefault();
+    event.stopPropagation();
+
     if (event.touches.length === 1) {
       // Handle pan
-      const newX = event.touches[0].clientX - touchStart.x;
-      const newY = event.touches[0].clientY - touchStart.y;
+      const touch = event.touches[0];
+      const newX = touch.clientX - touchStart.x;
+      const newY = touch.clientY - touchStart.y;
+
+      // Apply the new position
       setPosition({ x: newX, y: newY });
     } else if (event.touches.length === 2 && lastPinchDistance !== null) {
       // Handle pinch zoom
@@ -397,7 +403,8 @@ function FamilyTree({ onUserClick, rootUserId }: FamilyTreeProps) {
     }
   };
 
-  const handleTouchEnd = () => {
+  const handleTouchEnd = (event: React.TouchEvent) => {
+    event.preventDefault();
     setLastPinchDistance(null);
   };
 
@@ -443,18 +450,19 @@ function FamilyTree({ onUserClick, rootUserId }: FamilyTreeProps) {
         </CardHeader>
         <CardContent className="space-y-4">
           <div
-            className="relative w-full overflow-hidden border rounded-lg"
+            className="relative w-full overflow-hidden border rounded-lg touch-pan-x touch-pan-y"
             style={{
               height: '600px',
               paddingTop: 'env(safe-area-inset-top)',
-              paddingBottom: 'env(safe-area-inset-bottom)'
+              paddingBottom: 'env(safe-area-inset-bottom)',
+              WebkitOverflowScrolling: 'touch' // Enable momentum scrolling on iOS
             }}
           >
             {/* SVG Family Tree */}
             <svg
               width={SVG_WIDTH}
               height={SVG_HEIGHT}
-              className="max-w-full cursor-move touch-none"
+              className="max-w-full cursor-move touch-none select-none"
               ref={svgRef}
               onMouseDown={handleMouseDown}
               onMouseMove={handleMouseMove}
