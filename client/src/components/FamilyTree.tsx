@@ -76,6 +76,8 @@ function FamilyTree({ onUserClick, rootUserId }: FamilyTreeProps) {
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [dragStartTime, setDragStartTime] = useState<number>(0);
+  const [dragDistance, setDragDistance] = useState(0);
   const svgRef = useRef<SVGSVGElement>(null);
   const [isCreatingUser, setIsCreatingUser] = useState(false);
   const [isAddingRelation, setIsAddingRelation] = useState(false);
@@ -338,6 +340,8 @@ function FamilyTree({ onUserClick, rootUserId }: FamilyTreeProps) {
   const handleMouseDown = (event: React.MouseEvent) => {
     if (event.button !== 0) return;
     setIsDragging(true);
+    setDragStartTime(Date.now());
+    setDragDistance(0);
     setDragStart({
       x: event.clientX - position.x,
       y: event.clientY - position.y
@@ -348,6 +352,13 @@ function FamilyTree({ onUserClick, rootUserId }: FamilyTreeProps) {
     if (!isDragging) return;
     const newX = event.clientX - dragStart.x;
     const newY = event.clientY - dragStart.y;
+
+    // Calculate drag distance
+    const dx = newX - position.x;
+    const dy = newY - position.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    setDragDistance(distance);
+
     setPosition({ x: newX, y: newY });
   };
 
@@ -362,9 +373,12 @@ function FamilyTree({ onUserClick, rootUserId }: FamilyTreeProps) {
   const handleTouchStart = (event: React.TouchEvent) => {
     if (event.touches.length === 1) {
       event.preventDefault();
+      const touch = event.touches[0];
+      setDragStartTime(Date.now());
+      setDragDistance(0);
       setTouchStart({
-        x: event.touches[0].clientX - position.x,
-        y: event.touches[0].clientY - position.y
+        x: touch.clientX - position.x,
+        y: touch.clientY - position.y
       });
     } else if (event.touches.length === 2) {
       // Handle pinch start
@@ -385,6 +399,12 @@ function FamilyTree({ onUserClick, rootUserId }: FamilyTreeProps) {
       const touch = event.touches[0];
       const newX = touch.clientX - touchStart.x;
       const newY = touch.clientY - touchStart.y;
+
+      // Calculate drag distance
+      const dx = newX - position.x;
+      const dy = newY - position.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      setDragDistance(distance);
 
       // Apply the new position
       setPosition({ x: newX, y: newY });
@@ -413,10 +433,18 @@ function FamilyTree({ onUserClick, rootUserId }: FamilyTreeProps) {
 
     event.stopPropagation();
     event.preventDefault();
-    if (!isDragging && onUserClick) {
-      onUserClick(userId);
-    } else if (!isDragging) {
-      navigate(`/profile/${userId}`);
+
+    // Check if this was a genuine click vs a drag
+    const timeSinceStart = Date.now() - dragStartTime;
+    const isQuickTouch = timeSinceStart < 300; // 300ms threshold
+    const isSmallMovement = dragDistance < 10; // 10px threshold
+
+    if (isQuickTouch && isSmallMovement) {
+      if (onUserClick) {
+        onUserClick(userId);
+      } else {
+        navigate(`/profile/${userId}`);
+      }
     }
   };
 
