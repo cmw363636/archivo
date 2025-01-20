@@ -1,45 +1,21 @@
 import UIKit
 import Capacitor
-import WebKit
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
     var window: UIWindow?
-    let processPool = WKProcessPool()
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Configure WebKit with shared process pool
-        let config = WKWebViewConfiguration()
-        config.processPool = processPool
-        config.websiteDataStore = WKWebsiteDataStore.default()
-        config.preferences.setValue(true, forKey: "allowFileAccessFromFileURLs")
-        config.preferences.setValue(true, forKey: "allowUniversalAccessFromFileURLs")
-        config.preferences.javaScriptEnabled = true
+        // Create window
+        window = UIWindow(frame: UIScreen.main.bounds)
 
-        // Only set allowsContentJavaScript for iOS 14 and above
-        if #available(iOS 14.0, *) {
-            config.defaultWebpagePreferences.allowsContentJavaScript = true
-        }
+        // Create and configure the bridge view controller
+        let viewController = CAPBridgeViewController()
 
-        // Enable WebKit Networking
-        config.setValue(true, forKey: "_allowsDirectories")
-        config.setValue(Bundle.main.bundleIdentifier, forKey: "_networkingBundleIdentifier")
-
-        // Create web view with configuration
-        let webView = WKWebView(frame: .zero, configuration: config)
-
-        // Initialize Capacitor bridge
-        let bridge = CAPBridge()
-        bridge.webView = webView
-
-        // Configure additional web view settings
-        webView.configuration.setValue(true, forKey: "allowingReadAccessToURL")
-
-        // Allow file access from the app's container directory
-        if let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.com.archivo.app") {
-            webView.configuration.setURLSchemeHandler(nil as WKURLSchemeHandler?, forURLScheme: "capacitor-file")
-        }
+        // Set as root view controller
+        window?.rootViewController = viewController
+        window?.makeKeyAndVisible()
 
         return true
     }
