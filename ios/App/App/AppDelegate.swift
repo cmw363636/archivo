@@ -30,13 +30,22 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         window = UIWindow(frame: UIScreen.main.bounds)
 
         // Create and configure the bridge view controller
-        let viewController = CAPBridgeViewController(configuration: configuration)
+        let viewController = CAPBridgeViewController()
 
-        // Additional WebKit customization if needed
+        // Configure the WebView after initialization
         if let webView = viewController.webView {
             webView.allowsBackForwardNavigationGestures = true
             webView.scrollView.bounces = true
             webView.scrollView.alwaysBounceVertical = true
+
+            // Apply stored configuration
+            if let config = self.webViewConfiguration {
+                webView.configuration.processPool = config.processPool
+                webView.configuration.preferences = config.preferences
+                webView.configuration.allowsInlineMediaPlayback = config.allowsInlineMediaPlayback
+                webView.configuration.mediaTypesRequiringUserActionForPlayback = config.mediaTypesRequiringUserActionForPlayback
+                webView.configuration.applicationNameForUserAgent = config.applicationNameForUserAgent
+            }
 
             // Configure text input handling
             let contentController = WKUserContentController()
