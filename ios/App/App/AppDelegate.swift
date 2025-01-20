@@ -16,14 +16,18 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         config.preferences.setValue(true, forKey: "allowFileAccessFromFileURLs")
         config.preferences.setValue(true, forKey: "allowUniversalAccessFromFileURLs")
         config.preferences.javaScriptEnabled = true
-        config.defaultWebpagePreferences.allowsContentJavaScript = true
+
+        // Only set allowsContentJavaScript for iOS 14 and above
+        if #available(iOS 14.0, *) {
+            config.defaultWebpagePreferences.allowsContentJavaScript = true
+        }
 
         // Enable WebKit Networking
         config.setValue(true, forKey: "_allowsDirectories")
         config.setValue(Bundle.main.bundleIdentifier, forKey: "_networkingBundleIdentifier")
 
         // Set the configuration for Capacitor's web view
-        if let bridge = CAPBridge.bridge() {
+        if let bridge = CAPBridge.getCapacitorBridge() {
             bridge.webViewConfiguration = config
 
             // Configure additional web view settings
@@ -31,11 +35,14 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                 webView.configuration.preferences.setValue(true, forKey: "allowFileAccessFromFileURLs")
                 webView.configuration.preferences.setValue(true, forKey: "allowUniversalAccessFromFileURLs")
                 webView.configuration.preferences.javaScriptEnabled = true
-                webView.configuration.defaultWebpagePreferences.allowsContentJavaScript = true
+
+                if #available(iOS 14.0, *) {
+                    webView.configuration.defaultWebpagePreferences.allowsContentJavaScript = true
+                }
 
                 // Allow file access from the app's container directory
                 if let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.com.archivo.app") {
-                    webView.configuration.setURLSchemeHandler(nil, forURLScheme: "capacitor-file")
+                    webView.configuration.setURLSchemeHandler(WKURLSchemeHandler?.none, forURLScheme: "capacitor-file")
                     webView.configuration.setValue(true, forKey: "allowingReadAccessToURL")
                 }
 
