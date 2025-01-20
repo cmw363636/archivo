@@ -9,7 +9,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     let processPool = WKProcessPool()
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Configure WebKit
+        // Configure WebKit with shared process pool
         let config = WKWebViewConfiguration()
         config.processPool = processPool
         config.websiteDataStore = WKWebsiteDataStore.default()
@@ -17,6 +17,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         config.preferences.setValue(true, forKey: "allowUniversalAccessFromFileURLs")
         config.preferences.javaScriptEnabled = true
         config.defaultWebpagePreferences.allowsContentJavaScript = true
+
+        // Enable WebKit Networking
+        config.setValue(true, forKey: "_allowsDirectories")
+        config.setValue(Bundle.main.bundleIdentifier, forKey: "_networkingBundleIdentifier")
 
         // Set the configuration for Capacitor's web view
         if let bridge = CAPBridge.bridge() {
@@ -34,6 +38,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                     webView.configuration.setURLSchemeHandler(nil, forURLScheme: "capacitor-file")
                     webView.configuration.setValue(true, forKey: "allowingReadAccessToURL")
                 }
+
+                // Configure WebKit networking process
+                webView.configuration.setValue(Bundle.main.bundleIdentifier, forKey: "_networkingBundleIdentifier")
+                webView.configuration.processPool = processPool
             }
         }
 
