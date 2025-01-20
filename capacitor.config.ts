@@ -14,7 +14,13 @@ const config: CapacitorConfig = {
     preferredContentMode: 'mobile',
     limitsNavigationsToAppBoundDomains: true,
     appendUserAgent: 'Archivo-iOS',
-    webViewSuspensionEnabled: false
+    scrollEnabled: true,
+    allowsLinkPreview: true,
+    webkitSettings: {
+      allowsBackForwardNavigationGestures: true,
+      allowsInlineMediaPlayback: true,
+      mediaTypesRequiringUserActionForPlayback: ['none']
+    }
   },
   android: {
     backgroundColor: '#ffffff'
