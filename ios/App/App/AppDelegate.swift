@@ -1,5 +1,6 @@
 import UIKit
 import Capacitor
+import WebKit
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -7,6 +8,31 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+        // Configure WebKit
+        let config = WKWebViewConfiguration()
+        config.websiteDataStore = WKWebsiteDataStore.default()
+        config.preferences.setValue(true, forKey: "allowFileAccessFromFileURLs")
+        config.preferences.setValue(true, forKey: "allowUniversalAccessFromFileURLs")
+
+        // Set the configuration for Capacitor's web view
+        if let bridge = CAPBridge.bridge() {
+            bridge.webViewConfiguration = config
+            
+            // Configure additional web view settings
+            if let webView = bridge.webView {
+                webView.configuration.preferences.setValue(true, forKey: "allowFileAccessFromFileURLs")
+                webView.configuration.preferences.setValue(true, forKey: "allowUniversalAccessFromFileURLs")
+                webView.configuration.preferences.javaScriptEnabled = true
+                webView.configuration.defaultWebpagePreferences.allowsContentJavaScript = true
+                
+                // Allow file access from the app's container directory
+                if let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.com.archivo.app") {
+                    webView.configuration.setURLSchemeHandler(nil, forURLScheme: "capacitor-file")
+                    webView.configuration.setValue(true, forKey: "allowingReadAccessToURL")
+                }
+            }
+        }
+
         // Override point for customization after application launch.
         return true
     }
@@ -45,5 +71,4 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // tracking app url opens, make sure to keep this call
         return ApplicationDelegateProxy.shared.application(application, continue: userActivity, restorationHandler: restorationHandler)
     }
-
 }

@@ -12,12 +12,12 @@ const config: CapacitorConfig = {
   ios: {
     contentInset: 'automatic',
     preferredContentMode: 'mobile',
-    limitsNavigationsToAppBoundDomains: true,
+    limitsNavigationsToAppBoundDomains: false,
     appendUserAgent: 'Archivo-iOS',
     scrollEnabled: true,
     allowsLinkPreview: true,
-    webkitAllowRunningInsecureContent: true,
-    backgroundColor: '#ffffff'
+    backgroundColor: '#ffffff',
+    scheme: 'archivo'
   },
   android: {
     backgroundColor: '#ffffff'
