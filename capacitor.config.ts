@@ -20,7 +20,8 @@ const config: CapacitorConfig = {
     allowsLinkPreview: true,
     backgroundColor: '#ffffff',
     scheme: 'archivo',
-    webViewConfiguration: {
+    // Update WebKit configuration
+    webView: {
       allowsInlineMediaPlayback: true,
       allowsAirPlayForMediaPlayback: true,
       mediaTypesRequiringUserActionForPlayback: ['none'],
