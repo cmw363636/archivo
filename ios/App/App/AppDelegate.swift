@@ -1,5 +1,6 @@
 import UIKit
 import Capacitor
+import WebKit
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -10,8 +11,36 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Create window
         window = UIWindow(frame: UIScreen.main.bounds)
 
-        // Create and configure the bridge view controller
+        // Configure WebKit
+        let configuration = WKWebViewConfiguration()
+        configuration.allowsInlineMediaPlayback = true
+        configuration.mediaTypesRequiringUserActionForPlayback = []
+        configuration.allowsAirPlayForMediaPlayback = true
+
+        // Add required preferences
+        let preferences = WKPreferences()
+        preferences.javaScriptEnabled = true
+        configuration.preferences = preferences
+
+        // Create and configure the bridge view controller with the WebKit configuration
         let viewController = CAPBridgeViewController()
+        viewController.webView?.configuration.preferences = preferences
+
+        // Additional WebKit customization
+        if let webView = viewController.webView {
+            webView.allowsBackForwardNavigationGestures = true
+            webView.scrollView.bounces = true
+            webView.scrollView.alwaysBounceVertical = true
+            webView.configuration.applicationNameForUserAgent = "Archivo-iOS"
+
+            // Configure text input handling
+            let contentController = WKUserContentController()
+            webView.configuration.userContentController = contentController
+
+            // Ensure process pool is shared
+            let processPool = WKProcessPool()
+            webView.configuration.processPool = processPool
+        }
 
         // Set as root view controller
         window?.rootViewController = viewController
@@ -36,6 +65,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func applicationDidBecomeActive(_ application: UIApplication) {
         // Restart any tasks that were paused (or not yet started) while the application was inactive. If the application was previously in the background, optionally refresh the user interface.
+        NotificationCenter.default.post(name: UIApplication.didBecomeActiveNotification, object: nil)
     }
 
     func applicationWillTerminate(_ application: UIApplication) {

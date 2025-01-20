@@ -7,7 +7,9 @@ const config: CapacitorConfig = {
   server: {
     androidScheme: 'https',
     allowNavigation: ['*'],
-    cleartext: true
+    cleartext: true,
+    hostname: 'app',
+    iosScheme: 'archivo'
   },
   ios: {
     contentInset: 'automatic',
@@ -17,7 +19,13 @@ const config: CapacitorConfig = {
     scrollEnabled: true,
     allowsLinkPreview: true,
     backgroundColor: '#ffffff',
-    scheme: 'archivo'
+    scheme: 'archivo',
+    webkitConfiguration: {
+      allowsInlineMediaPlayback: true,
+      allowsAirPlayForMediaPlayback: true,
+      mediaTypesRequiringUserActionForPlayback: ['none'],
+      allowsBackForwardNavigationGestures: true
+    }
   },
   android: {
     backgroundColor: '#ffffff'
