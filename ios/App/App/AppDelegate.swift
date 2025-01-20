@@ -27,7 +27,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         config.setValue(Bundle.main.bundleIdentifier, forKey: "_networkingBundleIdentifier")
 
         // Set the configuration for Capacitor's web view
-        if let bridge = CAPBridge.bridge {
+        if let bridge = CAPBridge.instance {
             bridge.webViewConfiguration = config
 
             // Configure additional web view settings
