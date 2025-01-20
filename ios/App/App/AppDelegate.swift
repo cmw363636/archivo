@@ -6,25 +6,29 @@ import WebKit
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
     var window: UIWindow?
+    let processPool = WKProcessPool()
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // Configure WebKit
         let config = WKWebViewConfiguration()
+        config.processPool = processPool
         config.websiteDataStore = WKWebsiteDataStore.default()
         config.preferences.setValue(true, forKey: "allowFileAccessFromFileURLs")
         config.preferences.setValue(true, forKey: "allowUniversalAccessFromFileURLs")
+        config.preferences.javaScriptEnabled = true
+        config.defaultWebpagePreferences.allowsContentJavaScript = true
 
         // Set the configuration for Capacitor's web view
         if let bridge = CAPBridge.bridge() {
             bridge.webViewConfiguration = config
-            
+
             // Configure additional web view settings
             if let webView = bridge.webView {
                 webView.configuration.preferences.setValue(true, forKey: "allowFileAccessFromFileURLs")
                 webView.configuration.preferences.setValue(true, forKey: "allowUniversalAccessFromFileURLs")
                 webView.configuration.preferences.javaScriptEnabled = true
                 webView.configuration.defaultWebpagePreferences.allowsContentJavaScript = true
-                
+
                 // Allow file access from the app's container directory
                 if let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.com.archivo.app") {
                     webView.configuration.setURLSchemeHandler(nil, forURLScheme: "capacitor-file")
@@ -33,7 +37,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             }
         }
 
-        // Override point for customization after application launch.
         return true
     }
 
