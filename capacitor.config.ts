@@ -16,11 +16,8 @@ const config: CapacitorConfig = {
     appendUserAgent: 'Archivo-iOS',
     scrollEnabled: true,
     allowsLinkPreview: true,
-    webkitSettings: {
-      allowsBackForwardNavigationGestures: true,
-      allowsInlineMediaPlayback: true,
-      mediaTypesRequiringUserActionForPlayback: ['none']
-    }
+    webkitAllowRunningInsecureContent: true,
+    backgroundColor: '#ffffff'
   },
   android: {
     backgroundColor: '#ffffff'
