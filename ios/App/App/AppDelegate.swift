@@ -26,28 +26,19 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         config.setValue(true, forKey: "_allowsDirectories")
         config.setValue(Bundle.main.bundleIdentifier, forKey: "_networkingBundleIdentifier")
 
+        // Create web view with configuration
+        let webView = WKWebView(frame: .zero, configuration: config)
+
         // Initialize Capacitor bridge
-        let _ = CAPBridge(webView: WKWebView(frame: .zero, configuration: config))
+        let bridge = CAPBridge()
+        bridge.webView = webView
 
         // Configure additional web view settings
-        if let bridge = CAPBridge.getCapacitorBridge() {
-            bridge.webView?.configuration.preferences.setValue(true, forKey: "allowFileAccessFromFileURLs")
-            bridge.webView?.configuration.preferences.setValue(true, forKey: "allowUniversalAccessFromFileURLs")
-            bridge.webView?.configuration.preferences.javaScriptEnabled = true
+        webView.configuration.setValue(true, forKey: "allowingReadAccessToURL")
 
-            if #available(iOS 14.0, *) {
-                bridge.webView?.configuration.defaultWebpagePreferences.allowsContentJavaScript = true
-            }
-
-            // Allow file access from the app's container directory
-            if let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.com.archivo.app") {
-                bridge.webView?.configuration.setURLSchemeHandler(nil as WKURLSchemeHandler?, forURLScheme: "capacitor-file")
-                bridge.webView?.configuration.setValue(true, forKey: "allowingReadAccessToURL")
-            }
-
-            // Configure WebKit networking process
-            bridge.webView?.configuration.setValue(Bundle.main.bundleIdentifier, forKey: "_networkingBundleIdentifier")
-            bridge.webView?.configuration.processPool = processPool
+        // Allow file access from the app's container directory
+        if let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.com.archivo.app") {
+            webView.configuration.setURLSchemeHandler(nil as WKURLSchemeHandler?, forURLScheme: "capacitor-file")
         }
 
         return true
