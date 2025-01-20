@@ -45,5 +45,28 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>WKAppBoundDomains</key>
+	<array>
+		<string>archivo.app</string>
+	</array>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+	</dict>
+	<key>WKProcessPool</key>
+	<dict>
+		<key>_WKProcessPoolConfiguration</key>
+		<dict>
+			<key>StorageQuota</key>
+			<integer>52428800</integer>
+			<key>AllowsPrivateBrowsing</key>
+			<false/>
+		</dict>
+	</dict>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>archivo</string>
+	</array>
 </dict>
 </plist>
