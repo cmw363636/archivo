@@ -59,6 +59,10 @@
                 <true/>
                 <key>NSIncludesSubdomains</key>
                 <true/>
+                <key>NSTemporaryExceptionAllowsInsecureHTTPLoads</key>
+                <true/>
+                <key>NSTemporaryExceptionMinimumTLSVersion</key>
+                <string>TLSv1.2</string>
             </dict>
         </dict>
     </dict>
@@ -74,6 +78,7 @@
             <key>CFBundleURLSchemes</key>
             <array>
                 <string>archivo</string>
+                <string>capacitor</string>
             </array>
             <key>CFBundleURLName</key>
             <string>com.archivo.app</string>
@@ -108,6 +113,12 @@
         <true/>
         <key>allowsPictureInPictureMediaPlayback</key>
         <true/>
+        <key>processPool</key>
+        <true/>
+        <key>allowsBackForwardNavigationGestures</key>
+        <true/>
     </dict>
+    <key>CADisableMinimumFrameDurationOnPhone</key>
+    <true/>
 </dict>
 </plist>
