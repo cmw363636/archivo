@@ -5,10 +5,16 @@ const config: CapacitorConfig = {
   appName: 'Archivo',
   webDir: 'dist/public',
   server: {
-    androidScheme: 'https'
+    androidScheme: 'https',
+    allowNavigation: ['*'],
+    cleartext: true
   },
   ios: {
-    contentInset: 'automatic'
+    contentInset: 'automatic',
+    preferredContentMode: 'mobile',
+    limitsNavigationsToAppBoundDomains: true,
+    appendUserAgent: 'Archivo-iOS',
+    webViewSuspensionEnabled: false
   },
   android: {
     backgroundColor: '#ffffff'
