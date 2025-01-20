@@ -26,30 +26,28 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         config.setValue(true, forKey: "_allowsDirectories")
         config.setValue(Bundle.main.bundleIdentifier, forKey: "_networkingBundleIdentifier")
 
-        // Set the configuration for Capacitor's web view
-        if let bridge = CAPBridge.getInstanceIfExists() {
-            bridge.webViewConfiguration = config
+        // Initialize Capacitor bridge
+        let _ = CAPBridge(webView: WKWebView(frame: .zero, configuration: config))
 
-            // Configure additional web view settings
-            if let webView = bridge.webView {
-                webView.configuration.preferences.setValue(true, forKey: "allowFileAccessFromFileURLs")
-                webView.configuration.preferences.setValue(true, forKey: "allowUniversalAccessFromFileURLs")
-                webView.configuration.preferences.javaScriptEnabled = true
+        // Configure additional web view settings
+        if let bridge = CAPBridge.getCapacitorBridge() {
+            bridge.webView?.configuration.preferences.setValue(true, forKey: "allowFileAccessFromFileURLs")
+            bridge.webView?.configuration.preferences.setValue(true, forKey: "allowUniversalAccessFromFileURLs")
+            bridge.webView?.configuration.preferences.javaScriptEnabled = true
 
-                if #available(iOS 14.0, *) {
-                    webView.configuration.defaultWebpagePreferences.allowsContentJavaScript = true
-                }
-
-                // Allow file access from the app's container directory
-                if let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.com.archivo.app") {
-                    webView.configuration.setURLSchemeHandler(nil as WKURLSchemeHandler?, forURLScheme: "capacitor-file")
-                    webView.configuration.setValue(true, forKey: "allowingReadAccessToURL")
-                }
-
-                // Configure WebKit networking process
-                webView.configuration.setValue(Bundle.main.bundleIdentifier, forKey: "_networkingBundleIdentifier")
-                webView.configuration.processPool = processPool
+            if #available(iOS 14.0, *) {
+                bridge.webView?.configuration.defaultWebpagePreferences.allowsContentJavaScript = true
             }
+
+            // Allow file access from the app's container directory
+            if let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.com.archivo.app") {
+                bridge.webView?.configuration.setURLSchemeHandler(nil as WKURLSchemeHandler?, forURLScheme: "capacitor-file")
+                bridge.webView?.configuration.setValue(true, forKey: "allowingReadAccessToURL")
+            }
+
+            // Configure WebKit networking process
+            bridge.webView?.configuration.setValue(Bundle.main.bundleIdentifier, forKey: "_networkingBundleIdentifier")
+            bridge.webView?.configuration.processPool = processPool
         }
 
         return true
