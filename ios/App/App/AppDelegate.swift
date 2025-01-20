@@ -27,7 +27,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         config.setValue(Bundle.main.bundleIdentifier, forKey: "_networkingBundleIdentifier")
 
         // Set the configuration for Capacitor's web view
-        if let bridge = CAPBridge.getCapacitorBridge() {
+        if let bridge = CAPBridge.bridge {
             bridge.webViewConfiguration = config
 
             // Configure additional web view settings
@@ -42,7 +42,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
                 // Allow file access from the app's container directory
                 if let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.com.archivo.app") {
-                    webView.configuration.setURLSchemeHandler(WKURLSchemeHandler?.none, forURLScheme: "capacitor-file")
+                    webView.configuration.setURLSchemeHandler(nil as WKURLSchemeHandler?, forURLScheme: "capacitor-file")
                     webView.configuration.setValue(true, forKey: "allowingReadAccessToURL")
                 }
 
